@@ -1,0 +1,9 @@
+[package]
+name = "ekvsb"
+version = "0.1.0"
+authors = ["Takeru Ohta <phjgt308@gmail.com>"]
+
+[dependencies]
+percent-encoding = "1"
+siphasher = "0.2"
+trackable = "0.2"
