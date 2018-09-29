@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 
 [dependencies]
+byte-unit = "1"
 clap = "2"
 percent-encoding = "1"
 rand = "0.5"
