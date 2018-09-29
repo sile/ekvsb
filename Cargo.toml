@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 
 [dependencies]
+clap = "2"
 percent-encoding = "1"
+rand = "0.5"
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
 siphasher = "0.2"
-trackable = "0.2"
+trackable = { version = "0.2", features = ["serialize"] }
