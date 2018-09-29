@@ -2,6 +2,8 @@ use rand::{self, RngCore};
 use std::time::Duration;
 use trackable::error::Failure;
 
+use Result;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Task {
@@ -34,6 +36,16 @@ impl Task {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Key(String);
+impl Key {
+    pub fn new(s: String) -> Self {
+        Key(s)
+    }
+
+    pub fn from_utf8(b: Vec<u8>) -> Result<Self> {
+        let s = track_any_err!(String::from_utf8(b))?;
+        Ok(Key(s))
+    }
+}
 impl AsRef<[u8]> for Key {
     fn as_ref(&self) -> &[u8] {
         self.0.as_bytes()
