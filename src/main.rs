@@ -16,6 +16,7 @@ use ekvsb::{KeyValueStore, Result};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{BTreeMap, HashMap};
+use std::io::{BufReader, BufWriter, Read, Write};
 use trackable::error::{ErrorKindExt, Failed};
 
 fn main() -> trackable::result::MainResult {
@@ -115,7 +116,7 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
     let _reserved_memory: Vec<u8> = vec![1; memory_load_size];
 
     let workload: Workload = track_any_err!(
-        serde_json::from_reader(std::io::stdin()),
+        serde_json::from_reader(stdin()),
         "Malformed input workload JSON"
     )?;
 
@@ -158,7 +159,7 @@ fn handle_workload_subcommand(matches: &ArgMatches) -> Result<()> {
     } else {
         unreachable!();
     };
-    track_any_err!(serde_json::to_writer(std::io::stdout(), &tasks))?;
+    track_any_err!(serde_json::to_writer(stdout(), &tasks))?;
     Ok(())
 }
 
@@ -212,7 +213,7 @@ fn execute<T: KeyValueStore>(kvs: T, workload: Workload) -> Result<()> {
         } else {
             print!("  ");
         }
-        track_any_err!(serde_json::to_writer(std::io::stdout(), &result))?;
+        track_any_err!(serde_json::to_writer(stdout(), &result))?;
     }
     println!("\n}}");
     Ok(())
@@ -222,4 +223,12 @@ fn parse_size(s: &str) -> Result<usize> {
     let size = Byte::from_string(s)
         .map_err(|e| track!(Failed.cause(format!("Parse Error: {:?} ({:?})", s, e))))?;
     Ok(size.get_bytes() as usize)
+}
+
+fn stdin() -> impl Read {
+    BufReader::new(std::io::stdin())
+}
+
+fn stdout() -> impl Write {
+    BufWriter::new(std::io::stdout())
 }
