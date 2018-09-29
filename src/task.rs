@@ -1,4 +1,5 @@
 use rand::{self, RngCore};
+use std::cmp::Ordering;
 use std::time::Duration;
 use trackable::error::Failure;
 
@@ -85,11 +86,21 @@ pub struct TaskResult {
     pub error: Option<Failure>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, PartialEq)]
 pub struct Seconds(f64);
 impl Seconds {
     pub fn new(duration: Duration) -> Self {
         let x = duration.as_secs() as f64 + duration.subsec_micros() as f64 / 1_000_000.0;
         Seconds(x)
     }
+
+    pub fn as_f64(&self) -> f64 {
+        self.0
+    }
 }
+impl Ord for Seconds {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.partial_cmp(&other.0).expect("Never fails")
+    }
+}
+impl Eq for Seconds {}

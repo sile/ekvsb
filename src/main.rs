@@ -4,13 +4,15 @@ extern crate clap;
 extern crate ekvsb;
 extern crate rand;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate trackable;
 
 use byte_unit::Byte;
 use clap::{Arg, ArgMatches, SubCommand};
-use ekvsb::task::{Key, Task, ValueSpec};
+use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
 use ekvsb::{KeyValueStore, Result};
 use rand::rngs::StdRng;
@@ -98,11 +100,14 @@ fn main() -> trackable::result::MainResult {
                                 .default_value("1"),
                         ),
                 ),
-        ).get_matches();
+        ).subcommand(SubCommand::with_name("summary"))
+        .get_matches();
     if let Some(matches) = matches.subcommand_matches("run") {
         track!(handle_run_subcommand(matches))?;
     } else if let Some(matches) = matches.subcommand_matches("workload") {
         track!(handle_workload_subcommand(matches))?;
+    } else if let Some(matches) = matches.subcommand_matches("summary") {
+        track!(handle_summary_subcommand(matches))?;
     } else {
         unreachable!();
     }
@@ -133,6 +138,22 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
     } else {
         unreachable!();
     }
+    Ok(())
+}
+
+fn execute<T: KeyValueStore>(kvs: T, workload: Workload) -> Result<()> {
+    let executor = WorkloadExecutor::new(kvs, workload);
+
+    println!("[");
+    for (i, result) in executor.enumerate() {
+        if i != 0 {
+            print!(",\n  ");
+        } else {
+            print!("  ");
+        }
+        track_any_err!(serde_json::to_writer(stdout(), &result))?;
+    }
+    println!("\n]");
     Ok(())
 }
 
@@ -203,20 +224,64 @@ where
     Ok(tasks)
 }
 
-fn execute<T: KeyValueStore>(kvs: T, workload: Workload) -> Result<()> {
-    let executor = WorkloadExecutor::new(kvs, workload);
+fn handle_summary_subcommand(_matches: &ArgMatches) -> Result<()> {
+    let results: Vec<TaskResult> = track_any_err!(
+        serde_json::from_reader(stdin()),
+        "Malformed run result JSON"
+    )?;
 
-    println!("{{");
-    for (i, result) in executor.enumerate() {
-        if i != 0 {
-            print!(",\n  ");
-        } else {
-            print!("  ");
-        }
-        track_any_err!(serde_json::to_writer(stdout(), &result))?;
-    }
-    println!("\n}}");
+    let errors = results.iter().filter(|r| r.error.is_some()).count();
+    let oks = results.len() - errors;
+    let elapsed = results.iter().map(|r| r.elapsed.as_f64()).sum();
+    let ops = results.len() as f64 / elapsed;
+    let latency = Latency::new(&results);
+    let summary = Summary {
+        oks,
+        errors,
+        elapsed,
+        ops,
+        latency,
+    };
+    track_any_err!(serde_json::to_writer_pretty(stdout(), &summary))?;
+
     Ok(())
+}
+
+#[derive(Serialize)]
+struct Summary {
+    oks: usize,
+    errors: usize,
+    elapsed: f64,
+    ops: f64,
+    latency: Latency,
+}
+
+#[derive(Serialize)]
+struct Latency {
+    min: Seconds,
+    median: Seconds,
+    p95: Seconds,
+    p99: Seconds,
+    max: Seconds,
+}
+impl Latency {
+    fn new(results: &[TaskResult]) -> Self {
+        let mut times = results.iter().map(|r| r.elapsed).collect::<Vec<_>>();
+        times.sort();
+        Latency {
+            min: times.iter().min().cloned().unwrap_or_default(),
+            median: times.get(times.len() / 2).cloned().unwrap_or_default(),
+            p95: times
+                .get(times.len() * 95 / 100)
+                .cloned()
+                .unwrap_or_default(),
+            p99: times
+                .get(times.len() * 99 / 100)
+                .cloned()
+                .unwrap_or_default(),
+            max: times.iter().max().cloned().unwrap_or_default(),
+        }
+    }
 }
 
 fn parse_size(s: &str) -> Result<usize> {
