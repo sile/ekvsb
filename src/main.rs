@@ -12,9 +12,10 @@ extern crate trackable;
 
 use byte_unit::Byte;
 use clap::{Arg, ArgMatches, SubCommand};
+use ekvsb::kvs::KeyValueStore;
 use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
-use ekvsb::{KeyValueStore, Result};
+use ekvsb::Result;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{BTreeMap, HashMap};
@@ -34,7 +35,11 @@ fn main() -> trackable::result::MainResult {
                     SubCommand::with_name("builtin::fs")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
                 ).subcommand(SubCommand::with_name("builtin::hashmap"))
-                .subcommand(SubCommand::with_name("builtin::btreemap")),
+                .subcommand(SubCommand::with_name("builtin::btreemap"))
+                .subcommand(
+                    SubCommand::with_name("rocksdb")
+                        .arg(Arg::with_name("DIR").index(1).required(true)),
+                ),
         ).subcommand(
             SubCommand::with_name("workload")
                 .subcommand(
@@ -127,13 +132,17 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
 
     if let Some(matches) = matches.subcommand_matches("builtin::fs") {
         let dir = matches.value_of("DIR").expect("never fails");
-        let kvs = track!(ekvsb::fs::FileSystemKvs::new(dir))?;
+        let kvs = track!(ekvsb::kvs::FileSystemKvs::new(dir))?;
         track!(execute(kvs, workload))?;
     } else if let Some(_matches) = matches.subcommand_matches("builtin::hashmap") {
         let kvs = HashMap::new();
         track!(execute(kvs, workload))?;
     } else if let Some(_matches) = matches.subcommand_matches("builtin::btreemap") {
         let kvs = BTreeMap::new();
+        track!(execute(kvs, workload))?;
+    } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
+        let dir = matches.value_of("DIR").expect("never fails");
+        let kvs = track!(ekvsb::kvs::RocksDb::new(dir))?;
         track!(execute(kvs, workload))?;
     } else {
         unreachable!();

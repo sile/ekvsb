@@ -6,7 +6,8 @@ use std::io::{ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use trackable::error::Failed;
 
-use {KeyValueStore, Result};
+use kvs::KeyValueStore;
+use Result;
 
 #[derive(Debug)]
 pub struct FileSystemKvs {
@@ -31,6 +32,8 @@ impl FileSystemKvs {
     }
 }
 impl KeyValueStore for FileSystemKvs {
+    type OwnedValue = Vec<u8>;
+
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<bool> {
         let path = self.key_to_path(key);
         track_any_err!(fs::create_dir_all(track_assert_some!(

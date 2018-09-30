@@ -90,7 +90,7 @@ pub struct TaskResult {
 pub struct Seconds(f64);
 impl Seconds {
     pub fn new(duration: Duration) -> Self {
-        let x = duration.as_secs() as f64 + duration.subsec_micros() as f64 / 1_000_000.0;
+        let x = duration.as_secs() as f64 + duration.subsec_nanos() as f64 / 1_000_000_000.0;
         Seconds(x)
     }
 
