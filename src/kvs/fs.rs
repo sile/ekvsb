@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use trackable::error::Failed;
 
 use kvs::KeyValueStore;
+use task::Existence;
 use Result;
 
 #[derive(Debug)]
@@ -34,13 +35,12 @@ impl FileSystemKvs {
 impl KeyValueStore for FileSystemKvs {
     type OwnedValue = Vec<u8>;
 
-    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<bool> {
+    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {
         let path = self.key_to_path(key);
         track_any_err!(fs::create_dir_all(track_assert_some!(
             path.parent(),
             Failed
         )))?;
-        let exists = path.exists();
         let mut file = track_any_err!(
             OpenOptions::new()
                 .create(true)
@@ -49,7 +49,7 @@ impl KeyValueStore for FileSystemKvs {
                 .open(path)
         )?;
         track_any_err!(file.write_all(value))?;
-        Ok(exists)
+        Ok(Existence::unknown())
     }
 
     fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -69,10 +69,9 @@ impl KeyValueStore for FileSystemKvs {
         }
     }
 
-    fn delete(&mut self, key: &[u8]) -> Result<bool> {
+    fn delete(&mut self, key: &[u8]) -> Result<Existence> {
         let path = self.key_to_path(key);
-        let exists = path.exists();
         track_any_err!(fs::remove_file(path))?;
-        Ok(exists)
+        Ok(Existence::unknown())
     }
 }

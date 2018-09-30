@@ -82,8 +82,24 @@ pub struct TaskResult {
     pub method: Method,
     pub start_time: Seconds,
     pub elapsed: Seconds,
-    pub exists: bool,
+    pub exists: Existence,
     pub error: Option<Failure>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Existence(Option<bool>);
+impl Existence {
+    pub fn new(exists: bool) -> Self {
+        Existence(Some(exists))
+    }
+
+    pub fn unknown() -> Self {
+        Existence(None)
+    }
+
+    pub fn exists(&self) -> Option<bool> {
+        self.0
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, PartialEq)]

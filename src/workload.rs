@@ -2,7 +2,7 @@ use std::time::Instant;
 use std::vec;
 
 use kvs::KeyValueStore;
-use task::{Method, Seconds, Task, TaskResult};
+use task::{Existence, Method, Seconds, Task, TaskResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Workload(Vec<Task>);
@@ -40,7 +40,7 @@ impl<T: KeyValueStore> Iterator for WorkloadExecutor<T> {
             Some(Task::Put { key, value, .. }) => {
                 let value = value.generate();
                 let start_time = self.start_time.elapsed();
-                let error = self.kvs.put(key.as_ref(), &value).err();
+                let result = self.kvs.put(key.as_ref(), &value);
                 let end_time = self.start_time.elapsed();
                 let result = TaskResult {
                     seqno,
@@ -48,8 +48,12 @@ impl<T: KeyValueStore> Iterator for WorkloadExecutor<T> {
                     method: Method::Put,
                     start_time: Seconds::new(start_time),
                     elapsed: Seconds::new(end_time - start_time),
-                    exists: true, // TODO
-                    error,
+                    exists: result
+                        .as_ref()
+                        .ok()
+                        .cloned()
+                        .unwrap_or_else(Existence::unknown),
+                    error: result.err(),
                 };
                 Some(result)
             }
@@ -63,14 +67,18 @@ impl<T: KeyValueStore> Iterator for WorkloadExecutor<T> {
                     method: Method::Get,
                     start_time: Seconds::new(start_time),
                     elapsed: Seconds::new(end_time - start_time),
-                    exists: result.as_ref().ok().map_or(false, |v| v.is_some()),
+                    exists: result
+                        .as_ref()
+                        .ok()
+                        .map(|v| Existence::new(v.is_some()))
+                        .unwrap_or_else(Existence::unknown),
                     error: result.err(),
                 };
                 Some(result)
             }
             Some(Task::Delete { key, .. }) => {
                 let start_time = self.start_time.elapsed();
-                let error = self.kvs.delete(key.as_ref()).err();
+                let result = self.kvs.delete(key.as_ref());
                 let end_time = self.start_time.elapsed();
                 let result = TaskResult {
                     seqno,
@@ -78,8 +86,12 @@ impl<T: KeyValueStore> Iterator for WorkloadExecutor<T> {
                     method: Method::Delete,
                     start_time: Seconds::new(start_time),
                     elapsed: Seconds::new(end_time - start_time),
-                    exists: false,
-                    error,
+                    exists: result
+                        .as_ref()
+                        .ok()
+                        .cloned()
+                        .unwrap_or_else(Existence::unknown),
+                    error: result.err(),
                 };
                 Some(result)
             }

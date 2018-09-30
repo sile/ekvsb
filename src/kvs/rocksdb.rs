@@ -2,6 +2,7 @@ use rocksdb::{DBVector, DB};
 use std::path::Path;
 
 use kvs::KeyValueStore;
+use task::Existence;
 use Result;
 
 #[derive(Debug)]
@@ -17,9 +18,9 @@ impl RocksDb {
 impl KeyValueStore for RocksDb {
     type OwnedValue = DBVector;
 
-    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<bool> {
+    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {
         track_any_err!(self.db.put(key, value))?;
-        Ok(false) // FIXME
+        Ok(Existence::unknown())
     }
 
     fn get(&mut self, key: &[u8]) -> Result<Option<Self::OwnedValue>> {
@@ -27,8 +28,8 @@ impl KeyValueStore for RocksDb {
         Ok(value)
     }
 
-    fn delete(&mut self, key: &[u8]) -> Result<bool> {
+    fn delete(&mut self, key: &[u8]) -> Result<Existence> {
         track_any_err!(self.db.delete(key))?;
-        Ok(true) // FIXME
+        Ok(Existence::unknown())
     }
 }
