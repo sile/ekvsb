@@ -6,6 +6,11 @@ use task::{Method, Seconds, Task, TaskResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Workload(Vec<Task>);
+impl Workload {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
 
 #[derive(Debug)]
 pub struct WorkloadExecutor<T> {

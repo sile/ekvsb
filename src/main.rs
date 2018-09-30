@@ -2,6 +2,7 @@ extern crate byte_unit;
 #[macro_use]
 extern crate clap;
 extern crate ekvsb;
+extern crate indicatif;
 extern crate rand;
 extern crate serde;
 #[macro_use]
@@ -16,6 +17,7 @@ use ekvsb::kvs::KeyValueStore;
 use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
 use ekvsb::Result;
+use indicatif::ProgressBar;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{BTreeMap, HashMap};
@@ -114,7 +116,8 @@ fn main() -> trackable::result::MainResult {
     } else if let Some(matches) = matches.subcommand_matches("summary") {
         track!(handle_summary_subcommand(matches))?;
     } else {
-        unreachable!();
+        eprintln!("Usage: {}", matches.usage());
+        std::process::exit(1);
     }
     Ok(())
 }
@@ -145,12 +148,14 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
         let kvs = track!(ekvsb::kvs::RocksDb::new(dir))?;
         track!(execute(kvs, workload))?;
     } else {
-        unreachable!();
+        eprintln!("Usage: {}", matches.usage());
+        std::process::exit(1);
     }
     Ok(())
 }
 
 fn execute<T: KeyValueStore>(kvs: T, workload: Workload) -> Result<()> {
+    let pb = ProgressBar::new(workload.len() as u64);
     let executor = WorkloadExecutor::new(kvs, workload);
 
     println!("[");
@@ -160,6 +165,7 @@ fn execute<T: KeyValueStore>(kvs: T, workload: Workload) -> Result<()> {
         } else {
             print!("  ");
         }
+        pb.inc(1);
         track_any_err!(serde_json::to_writer(stdout(), &result))?;
     }
     println!("\n]");

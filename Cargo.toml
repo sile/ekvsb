@@ -6,6 +6,7 @@ authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 [dependencies]
 byte-unit = "1"
 clap = "2"
+indicatif = "0.9"
 percent-encoding = "1"
 rand = "0.5"
 rocksdb = "0.10"
