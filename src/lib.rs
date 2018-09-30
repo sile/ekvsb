@@ -1,4 +1,5 @@
 extern crate percent_encoding;
+extern crate plotlib;
 extern crate rand;
 extern crate rocksdb;
 extern crate serde;
@@ -9,6 +10,7 @@ extern crate siphasher;
 extern crate trackable;
 
 pub mod kvs;
+pub mod plot;
 pub mod task;
 pub mod workload;
 

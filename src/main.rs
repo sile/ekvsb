@@ -108,13 +108,33 @@ fn main() -> trackable::result::MainResult {
                         ),
                 ),
         ).subcommand(SubCommand::with_name("summary"))
-        .get_matches();
+        .subcommand(
+            SubCommand::with_name("plot-text").arg(
+                Arg::with_name("SAMPLING_RATE")
+                    .long("sampling-rate")
+                    .takes_value(true)
+                    .default_value("1.0"),
+            ),
+        ).subcommand(
+            SubCommand::with_name("plot-svg")
+                .arg(Arg::with_name("SVG_FILE").index(1).required(true))
+                .arg(
+                    Arg::with_name("SAMPLING_RATE")
+                        .long("sampling-rate")
+                        .takes_value(true)
+                        .default_value("1.0"),
+                ),
+        ).get_matches();
     if let Some(matches) = matches.subcommand_matches("run") {
         track!(handle_run_subcommand(matches))?;
     } else if let Some(matches) = matches.subcommand_matches("workload") {
         track!(handle_workload_subcommand(matches))?;
     } else if let Some(matches) = matches.subcommand_matches("summary") {
         track!(handle_summary_subcommand(matches))?;
+    } else if let Some(matches) = matches.subcommand_matches("plot-text") {
+        track!(handle_plot_text_subcommand(matches))?;
+    } else if let Some(matches) = matches.subcommand_matches("plot-svg") {
+        track!(handle_plot_svg_subcommand(matches))?;
     } else {
         eprintln!("Usage: {}", matches.usage());
         std::process::exit(1);
@@ -297,6 +317,39 @@ impl Latency {
             max: times.iter().max().cloned().unwrap_or_default(),
         }
     }
+}
+
+fn handle_plot_text_subcommand(matches: &ArgMatches) -> Result<()> {
+    let sampling_rate: f64 = track_any_err!(
+        matches
+            .value_of("SAMPLING_RATE")
+            .expect("never fails")
+            .parse()
+    )?;
+    let results: Vec<TaskResult> = track_any_err!(
+        serde_json::from_reader(stdin()),
+        "Malformed run result JSON"
+    )?;
+    let text = track!(ekvsb::plot::plot_text(&results, sampling_rate))?;
+    println!("{}", text);
+    Ok(())
+}
+
+fn handle_plot_svg_subcommand(matches: &ArgMatches) -> Result<()> {
+    let svg_file = matches.value_of("SVG_FILE").expect("never fails");
+    let sampling_rate: f64 = track_any_err!(
+        matches
+            .value_of("SAMPLING_RATE")
+            .expect("never fails")
+            .parse()
+    )?;
+    let results: Vec<TaskResult> = track_any_err!(
+        serde_json::from_reader(stdin()),
+        "Malformed run result JSON"
+    )?;
+    track!(ekvsb::plot::plot_svg(&results, svg_file, sampling_rate))?;
+    println!("SVG FILE: {}", svg_file);
+    Ok(())
 }
 
 fn parse_size(s: &str) -> Result<usize> {
