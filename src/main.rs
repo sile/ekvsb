@@ -33,7 +33,8 @@ fn main() -> trackable::result::MainResult {
                         .long("memory-load")
                         .takes_value(true)
                         .default_value("0GiB"),
-                ).subcommand(
+                ).arg(Arg::with_name("SHUFFLE").long("shuffle"))
+                .subcommand(
                     SubCommand::with_name("builtin::fs")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
                 ).subcommand(SubCommand::with_name("builtin::hashmap"))
@@ -143,15 +144,19 @@ fn main() -> trackable::result::MainResult {
 }
 
 fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
+    let shuffle = matches.is_present("SHUFFLE");
     let memory_load_size = track!(parse_size(
         matches.value_of("MEMORY_LOAD_SIZE").expect("never fails")
     ))?;
     let _reserved_memory: Vec<u8> = vec![1; memory_load_size];
 
-    let workload: Workload = track_any_err!(
+    let mut workload: Workload = track_any_err!(
         serde_json::from_reader(stdin()),
         "Malformed input workload JSON"
     )?;
+    if shuffle {
+        workload.shuffle();
+    }
 
     if let Some(matches) = matches.subcommand_matches("builtin::fs") {
         let dir = matches.value_of("DIR").expect("never fails");

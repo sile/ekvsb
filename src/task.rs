@@ -33,6 +33,14 @@ impl Task {
             Task::Delete { priority, .. } => *priority,
         }
     }
+
+    pub fn set_priority(&mut self, new_priority: usize) {
+        match self {
+            Task::Put { priority, .. } => *priority = new_priority,
+            Task::Get { priority, .. } => *priority = new_priority,
+            Task::Delete { priority, .. } => *priority = new_priority,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,3 +1,4 @@
+use rand;
 use std::time::Instant;
 use std::vec;
 
@@ -9,6 +10,12 @@ pub struct Workload(Vec<Task>);
 impl Workload {
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn shuffle(&mut self) {
+        for t in &mut self.0 {
+            t.set_priority(rand::random());
+        }
     }
 }
 
