@@ -7,6 +7,15 @@ ekvsb
 
 Benchmark Tool for Embedded Key-Value Stores available in Rust
 
+Supported Key-Value Stores
+--------------------------
+
+- [HashMap](https://doc.rust-lang.org/std/collections/struct.HashMap.html) (volatile)
+- [BTreeMap](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) (volatile)
+- [FileSystem](https://docs.rs/ekvsb/0/ekvsb/kvs/struct.FileSystemKvs.html)
+- [RocksDB](https://crates.io/crates/rocksdb)
+- [Sled](https://crates.io/crates/sled)
+
 Examples
 --------
 
