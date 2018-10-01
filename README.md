@@ -1,6 +1,10 @@
 ekvsb
 =====
 
+[![Crates.io: ekvsb](https://img.shields.io/crates/v/ekvsb.svg)](https://crates.io/crates/ekvsb)
+[![Documentation](https://docs.rs/ekvsb/badge.svg)](https://docs.rs/ekvsb)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Benchmark Tool for Embedded Key-Value Stores available in Rust
 
 Examples
