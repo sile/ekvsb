@@ -290,6 +290,7 @@ fn handle_summary_subcommand(_matches: &ArgMatches) -> Result<()> {
         latency,
     };
     track_any_err!(serde_json::to_writer_pretty(stdout(), &summary))?;
+    println!();
 
     Ok(())
 }
