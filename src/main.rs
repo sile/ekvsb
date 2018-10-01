@@ -42,6 +42,9 @@ fn main() -> trackable::result::MainResult {
                 .subcommand(
                     SubCommand::with_name("rocksdb")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
+                ).subcommand(
+                    SubCommand::with_name("sled")
+                        .arg(Arg::with_name("DIR").index(1).required(true)),
                 ),
         ).subcommand(
             SubCommand::with_name("workload")
@@ -171,6 +174,10 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
     } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
         let dir = matches.value_of("DIR").expect("never fails");
         let kvs = track!(ekvsb::kvs::RocksDb::new(dir))?;
+        track!(execute(kvs, workload))?;
+    } else if let Some(matches) = matches.subcommand_matches("sled") {
+        let dir = matches.value_of("DIR").expect("never fails");
+        let kvs = track!(ekvsb::kvs::SledTree::new(dir))?;
         track!(execute(kvs, workload))?;
     } else {
         eprintln!("Usage: {}", matches.usage());

@@ -6,6 +6,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate siphasher;
+extern crate sled;
 #[macro_use]
 extern crate trackable;
 

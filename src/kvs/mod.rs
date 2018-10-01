@@ -6,9 +6,11 @@ use task::Existence;
 
 pub use self::fs::FileSystemKvs;
 pub use self::rocksdb::RocksDb;
+pub use self::sled::SledTree;
 
 mod fs;
 mod rocksdb;
+mod sled;
 
 pub trait KeyValueStore {
     type OwnedValue;
