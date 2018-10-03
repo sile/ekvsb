@@ -113,12 +113,13 @@ fn main() -> trackable::result::MainResult {
                 ),
         ).subcommand(SubCommand::with_name("summary"))
         .subcommand(
-            SubCommand::with_name("plot-text").arg(
-                Arg::with_name("SAMPLING_RATE")
-                    .long("sampling-rate")
-                    .takes_value(true)
-                    .default_value("1.0"),
-            ),
+            SubCommand::with_name("plot-text")
+                .arg(
+                    Arg::with_name("SAMPLING_RATE")
+                        .long("sampling-rate")
+                        .takes_value(true)
+                        .default_value("1.0"),
+                ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true)),
         ).subcommand(
             SubCommand::with_name("plot-svg")
                 .arg(Arg::with_name("SVG_FILE").index(1).required(true))
@@ -127,7 +128,7 @@ fn main() -> trackable::result::MainResult {
                         .long("sampling-rate")
                         .takes_value(true)
                         .default_value("1.0"),
-                ),
+                ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true)),
         ).get_matches();
     if let Some(matches) = matches.subcommand_matches("run") {
         track!(handle_run_subcommand(matches))?;
@@ -333,34 +334,42 @@ impl Latency {
 }
 
 fn handle_plot_text_subcommand(matches: &ArgMatches) -> Result<()> {
-    let sampling_rate: f64 = track_any_err!(
+    let mut options = ekvsb::plot::PlotOptions::new();
+    options.sampling_rate(track_any_err!(
         matches
             .value_of("SAMPLING_RATE")
             .expect("never fails")
             .parse()
-    )?;
+    )?);
+    if let Some(y_max) = matches.value_of("Y_MAX") {
+        options.y_max(track_any_err!(y_max.parse())?);
+    }
     let results: Vec<TaskResult> = track_any_err!(
         serde_json::from_reader(stdin()),
         "Malformed run result JSON"
     )?;
-    let text = track!(ekvsb::plot::plot_text(&results, sampling_rate))?;
+    let text = track!(options.plot_text(&results))?;
     println!("{}", text);
     Ok(())
 }
 
 fn handle_plot_svg_subcommand(matches: &ArgMatches) -> Result<()> {
     let svg_file = matches.value_of("SVG_FILE").expect("never fails");
-    let sampling_rate: f64 = track_any_err!(
+    let mut options = ekvsb::plot::PlotOptions::new();
+    options.sampling_rate(track_any_err!(
         matches
             .value_of("SAMPLING_RATE")
             .expect("never fails")
             .parse()
-    )?;
+    )?);
+    if let Some(y_max) = matches.value_of("Y_MAX") {
+        options.y_max(track_any_err!(y_max.parse())?);
+    }
     let results: Vec<TaskResult> = track_any_err!(
         serde_json::from_reader(stdin()),
         "Malformed run result JSON"
     )?;
-    track!(ekvsb::plot::plot_svg(&results, svg_file, sampling_rate))?;
+    track!(options.plot_svg(&results, svg_file))?;
     println!("SVG FILE: {}", svg_file);
     Ok(())
 }
