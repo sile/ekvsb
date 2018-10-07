@@ -27,7 +27,15 @@ impl FileSystemKvs {
 
         let mut hasher = SipHasher13::new();
         name.hash(&mut hasher);
-        let file = format!("{:04x}/{}", hasher.finish() as u16, name);
+
+        let h = hasher.finish();
+        let file = format!(
+            "{:02x}/{:02x}/{:02x}/{}",
+            h as u8,
+            (h >> 8) as u8,
+            (h >> 16) as u8,
+            name
+        );
 
         self.root_dir.join(file)
     }
