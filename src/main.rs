@@ -12,7 +12,7 @@ extern crate serde_json;
 extern crate trackable;
 
 use byte_unit::Byte;
-use clap::{Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use ekvsb::kvs::KeyValueStore;
 use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
@@ -33,8 +33,7 @@ fn main() -> trackable::result::MainResult {
                         .long("memory-load")
                         .takes_value(true)
                         .default_value("0GiB"),
-                ).arg(Arg::with_name("SHUFFLE").long("shuffle"))
-                .subcommand(
+                ).subcommand(
                     SubCommand::with_name("builtin::fs")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
                 ).subcommand(SubCommand::with_name("builtin::hashmap"))
@@ -49,68 +48,14 @@ fn main() -> trackable::result::MainResult {
         ).subcommand(
             SubCommand::with_name("workload")
                 .subcommand(
-                    SubCommand::with_name("PUT")
-                        .arg(
-                            Arg::with_name("COUNT")
-                                .long("count")
-                                .takes_value(true)
-                                .default_value("1000"),
-                        ).arg(
-                            Arg::with_name("KEY_SIZE")
-                                .long("key-size")
-                                .takes_value(true)
-                                .default_value("10"),
-                        ).arg(
-                            Arg::with_name("VALUE_SIZE")
-                                .long("value-size")
-                                .takes_value(true)
-                                .default_value("1KiB"),
-                        ).arg(Arg::with_name("SEED").long("seed").takes_value(true))
-                        .arg(
-                            Arg::with_name("PRIORITY_GROUP_SIZE")
-                                .long("priority-group-size")
-                                .takes_value(true)
-                                .default_value("1"),
-                        ),
-                ).subcommand(
-                    SubCommand::with_name("GET")
-                        .arg(
-                            Arg::with_name("COUNT")
-                                .long("count")
-                                .takes_value(true)
-                                .default_value("1000"),
-                        ).arg(
-                            Arg::with_name("KEY_SIZE")
-                                .long("key-size")
-                                .takes_value(true)
-                                .default_value("10"),
-                        ).arg(Arg::with_name("SEED").long("seed").takes_value(true))
-                        .arg(
-                            Arg::with_name("PRIORITY_GROUP_SIZE")
-                                .long("priority-group-size")
-                                .takes_value(true)
-                                .default_value("1"),
-                        ),
-                ).subcommand(
-                    SubCommand::with_name("DELETE")
-                        .arg(
-                            Arg::with_name("COUNT")
-                                .long("count")
-                                .takes_value(true)
-                                .default_value("1000"),
-                        ).arg(
-                            Arg::with_name("KEY_SIZE")
-                                .long("key-size")
-                                .takes_value(true)
-                                .default_value("10"),
-                        ).arg(Arg::with_name("SEED").long("seed").takes_value(true))
-                        .arg(
-                            Arg::with_name("PRIORITY_GROUP_SIZE")
-                                .long("priority-group-size")
-                                .takes_value(true)
-                                .default_value("1"),
-                        ),
-                ),
+                    workload_subcommand("PUT").arg(
+                        Arg::with_name("VALUE_SIZE")
+                            .long("value-size")
+                            .takes_value(true)
+                            .default_value("1KiB"),
+                    ),
+                ).subcommand(workload_subcommand("GET"))
+                .subcommand(workload_subcommand("DELETE")),
         ).subcommand(SubCommand::with_name("summary"))
         .subcommand(
             SubCommand::with_name("plot-text")
@@ -147,20 +92,41 @@ fn main() -> trackable::result::MainResult {
     Ok(())
 }
 
+fn workload_subcommand(name: &'static str) -> App<'static, 'static> {
+    SubCommand::with_name(name)
+        .arg(
+            Arg::with_name("COUNT")
+                .long("count")
+                .takes_value(true)
+                .default_value("1000"),
+        ).arg(
+            Arg::with_name("POPULATION_SIZE")
+                .long("population-size")
+                .takes_value(true),
+        ).arg(
+            Arg::with_name("KEY_SIZE")
+                .long("key-size")
+                .takes_value(true)
+                .default_value("10"),
+        ).arg(Arg::with_name("SEED").long("seed").takes_value(true))
+        .arg(
+            Arg::with_name("SHUFFLE")
+                .long("shuffle")
+                .takes_value(true)
+                .value_name("SHUFFLE_SEED"),
+        )
+}
+
 fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
-    let shuffle = matches.is_present("SHUFFLE");
     let memory_load_size = track!(parse_size(
         matches.value_of("MEMORY_LOAD_SIZE").expect("never fails")
     ))?;
     let _reserved_memory: Vec<u8> = vec![1; memory_load_size];
 
-    let mut workload: Workload = track_any_err!(
+    let workload: Workload = track_any_err!(
         serde_json::from_reader(stdin()),
         "Malformed input workload JSON"
     )?;
-    if shuffle {
-        workload.shuffle();
-    }
 
     if let Some(matches) = matches.subcommand_matches("builtin::fs") {
         let dir = matches.value_of("DIR").expect("never fails");
@@ -210,21 +176,14 @@ fn handle_workload_subcommand(matches: &ArgMatches) -> Result<()> {
         let value_size = track!(parse_size(
             matches.value_of("VALUE_SIZE").expect("never fails")
         ))?;
-        track!(generate_tasks(matches, |key, priority| Task::Put {
+        track!(generate_tasks(matches, |key| Task::Put {
             key,
             value: ValueSpec::Random { size: value_size },
-            priority,
         }))?
     } else if let Some(matches) = matches.subcommand_matches("GET") {
-        track!(generate_tasks(matches, |key, priority| Task::Get {
-            key,
-            priority
-        }))?
+        track!(generate_tasks(matches, |key| Task::Get { key }))?
     } else if let Some(matches) = matches.subcommand_matches("DELETE") {
-        track!(generate_tasks(matches, |key, priority| Task::Delete {
-            key,
-            priority
-        }))?
+        track!(generate_tasks(matches, |key| Task::Delete { key }))?
     } else {
         unreachable!();
     };
@@ -234,19 +193,18 @@ fn handle_workload_subcommand(matches: &ArgMatches) -> Result<()> {
 
 fn generate_tasks<F>(matches: &ArgMatches, f: F) -> Result<Vec<Task>>
 where
-    F: Fn(Key, usize) -> Task,
+    F: Fn(Key) -> Task,
 {
     let count: usize = track_any_err!(matches.value_of("COUNT").expect("never fails").parse())?;
     let key_size = track!(parse_size(
         matches.value_of("KEY_SIZE").expect("never fails")
     ))?;
     let seed = matches.value_of("SEED");
-    let priority_group_size: usize = track_any_err!(
-        matches
-            .value_of("PRIORITY_GROUP_SIZE")
-            .expect("never fails")
-            .parse()
-    )?;
+    let mut population_size = count;
+    if let Some(size) = matches.value_of("POPULATION_SIZE") {
+        population_size = track_any_err!(size.parse())?;
+        track_assert!(count <= population_size, Failed; count, population_size);
+    }
 
     let mut rng = if let Some(seed) = seed {
         track_assert!(seed.len() <= 32, Failed; seed.len());
@@ -262,13 +220,26 @@ where
     const CHARS: &[u8; 62] = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let mut tasks = Vec::new();
     let mut key = vec![0u8; key_size];
-    for i in 0..count {
+    for _ in 0..population_size {
         for b in &mut key {
             *b = *rng.choose(&CHARS[..]).expect("never fails");
         }
-        let priority = i / priority_group_size;
-        tasks.push(f(track!(Key::from_utf8(key.clone()))?, priority));
+        tasks.push(f(track!(Key::from_utf8(key.clone()))?));
     }
+
+    if let Some(seed) = matches.value_of("SHUFFLE") {
+        track_assert!(seed.len() <= 32, Failed; seed.len());
+        let mut seed_bytes = [0; 32];
+        for (i, b) in seed.bytes().enumerate() {
+            seed_bytes[i] = b;
+        }
+
+        let mut shuffle_rng = StdRng::from_seed(seed_bytes);
+        shuffle_rng.shuffle(&mut tasks);
+    }
+
+    tasks.truncate(count);
+
     Ok(tasks)
 }
 

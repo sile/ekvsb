@@ -8,39 +8,9 @@ use Result;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Task {
-    Put {
-        key: Key,
-        value: ValueSpec,
-        #[serde(default)]
-        priority: usize,
-    },
-    Get {
-        key: Key,
-        #[serde(default)]
-        priority: usize,
-    },
-    Delete {
-        key: Key,
-        #[serde(default)]
-        priority: usize,
-    },
-}
-impl Task {
-    pub fn priority(&self) -> usize {
-        match self {
-            Task::Put { priority, .. } => *priority,
-            Task::Get { priority, .. } => *priority,
-            Task::Delete { priority, .. } => *priority,
-        }
-    }
-
-    pub fn set_priority(&mut self, new_priority: usize) {
-        match self {
-            Task::Put { priority, .. } => *priority = new_priority,
-            Task::Get { priority, .. } => *priority = new_priority,
-            Task::Delete { priority, .. } => *priority = new_priority,
-        }
-    }
+    Put { key: Key, value: ValueSpec },
+    Get { key: Key },
+    Delete { key: Key },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

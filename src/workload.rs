@@ -1,4 +1,3 @@
-use rand;
 use std::time::Instant;
 use std::vec;
 
@@ -11,12 +10,6 @@ impl Workload {
     pub fn len(&self) -> usize {
         self.0.len()
     }
-
-    pub fn shuffle(&mut self) {
-        for t in &mut self.0 {
-            t.set_priority(rand::random());
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -27,8 +20,7 @@ pub struct WorkloadExecutor<T> {
     seqno: usize,
 }
 impl<T: KeyValueStore> WorkloadExecutor<T> {
-    pub fn new(kvs: T, mut workload: Workload) -> Self {
-        workload.0.sort_by_key(|t| t.priority());
+    pub fn new(kvs: T, workload: Workload) -> Self {
         WorkloadExecutor {
             kvs,
             workload: workload.0.into_iter(),
