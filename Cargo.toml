@@ -1,6 +1,6 @@
 [package]
 name = "ekvsb"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 description = "Benchmark Tool for Embedded Key-Value Stores available in Rust"
 homepage = "https://github.com/sile/ekvsb"

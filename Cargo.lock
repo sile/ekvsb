@@ -162,7 +162,7 @@ dependencies = [
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "termios 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termios 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -223,7 +223,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ekvsb"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "byte-unit 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -757,7 +757,7 @@ dependencies = [
 
 [[package]]
 name = "termios"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -985,7 +985,7 @@ dependencies = [
 "checksum syn 0.15.9 (registry+https://github.com/rust-lang/crates.io-index)" = "b10ee269228fb723234fce98e9aac0eaed2bd5f1ad2f6930e8d5b93f04445a1a"
 "checksum termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4096add70612622289f2fdcdbd5086dc81c1e2675e6ae58d6c4f62a16c6d7f2f"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
-"checksum termios 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "70226acdf12d182df757d9fb07c0257a1558ec48c8059f607d6b38145ce4e2fa"
+"checksum termios 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "72b620c5ea021d75a735c943269bb07d30c9b77d6ac6b236bc8b5c496ef05625"
 "checksum textwrap 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "307686869c93e71f94da64286f9a9524c0f308a9e1c87a583de8e9c9039ad3f6"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum trackable 0.2.20 (registry+https://github.com/rust-lang/crates.io-index)" = "6799250a7941c36388260ce038081c79523c400d7a59efd1aaed5d99741b84c0"
