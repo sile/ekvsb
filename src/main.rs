@@ -264,10 +264,12 @@ fn handle_summary_subcommand(_matches: &ArgMatches) -> Result<()> {
     let oks = results.len() - errors;
     let elapsed = results.iter().map(|r| r.elapsed.as_f64()).sum();
     let ops = results.len() as f64 / elapsed;
+    let existence = Existence::new(&results);
     let latency = Latency::new(&results);
     let summary = Summary {
         oks,
         errors,
+        existence,
         elapsed,
         ops,
         latency,
@@ -282,9 +284,36 @@ fn handle_summary_subcommand(_matches: &ArgMatches) -> Result<()> {
 struct Summary {
     oks: usize,
     errors: usize,
+    existence: Existence,
     elapsed: f64,
     ops: f64,
     latency: Latency,
+}
+
+#[derive(Serialize)]
+struct Existence {
+    exists: u64,
+    absents: u64,
+    unknowns: u64,
+}
+impl Existence {
+    fn new(results: &[TaskResult]) -> Self {
+        let mut exists = 0;
+        let mut absents = 0;
+        let mut unknowns = 0;
+        for r in results {
+            match r.exists.exists() {
+                None => unknowns += 1,
+                Some(false) => absents += 1,
+                Some(true) => exists += 1,
+            }
+        }
+        Existence {
+            exists,
+            absents,
+            unknowns,
+        }
+    }
 }
 
 #[derive(Serialize)]
