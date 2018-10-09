@@ -1,5 +1,5 @@
+extern crate gnuplot;
 extern crate percent_encoding;
-extern crate plotlib;
 extern crate rand;
 extern crate rocksdb;
 extern crate serde;

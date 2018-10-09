@@ -58,22 +58,23 @@ fn main() -> trackable::result::MainResult {
                 .subcommand(workload_subcommand("DELETE")),
         ).subcommand(SubCommand::with_name("summary"))
         .subcommand(
-            SubCommand::with_name("plot-text")
-                .arg(
-                    Arg::with_name("SAMPLING_RATE")
-                        .long("sampling-rate")
-                        .takes_value(true)
-                        .default_value("1.0"),
-                ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true)),
-        ).subcommand(
-            SubCommand::with_name("plot-svg")
-                .arg(Arg::with_name("SVG_FILE").index(1).required(true))
-                .arg(
-                    Arg::with_name("SAMPLING_RATE")
-                        .long("sampling-rate")
-                        .takes_value(true)
-                        .default_value("1.0"),
-                ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true)),
+            SubCommand::with_name("plot")
+                .subcommand(plot_subcommand("text"))
+                .subcommand(
+                    plot_subcommand("png")
+                        .arg(Arg::with_name("OUTPUT_FILE").index(1).required(true))
+                        .arg(
+                            Arg::with_name("WIDTH")
+                                .long("width")
+                                .takes_value(true)
+                                .default_value("1200"),
+                        ).arg(
+                            Arg::with_name("HEIGHT")
+                                .long("height")
+                                .takes_value(true)
+                                .default_value("800"),
+                        ),
+                ),
         ).get_matches();
     if let Some(matches) = matches.subcommand_matches("run") {
         track!(handle_run_subcommand(matches))?;
@@ -81,10 +82,8 @@ fn main() -> trackable::result::MainResult {
         track!(handle_workload_subcommand(matches))?;
     } else if let Some(matches) = matches.subcommand_matches("summary") {
         track!(handle_summary_subcommand(matches))?;
-    } else if let Some(matches) = matches.subcommand_matches("plot-text") {
-        track!(handle_plot_text_subcommand(matches))?;
-    } else if let Some(matches) = matches.subcommand_matches("plot-svg") {
-        track!(handle_plot_svg_subcommand(matches))?;
+    } else if let Some(matches) = matches.subcommand_matches("plot") {
+        track!(handle_plot_subcommand(matches))?;
     } else {
         eprintln!("Usage: {}", matches.usage());
         std::process::exit(1);
@@ -115,6 +114,18 @@ fn workload_subcommand(name: &'static str) -> App<'static, 'static> {
                 .takes_value(true)
                 .value_name("SHUFFLE_SEED"),
         )
+}
+
+fn plot_subcommand(name: &'static str) -> App<'static, 'static> {
+    SubCommand::with_name(name)
+        .arg(Arg::with_name("TITLE").long("title").takes_value(true))
+        .arg(
+            Arg::with_name("SAMPLING_RATE")
+                .long("sampling-rate")
+                .takes_value(true)
+                .default_value("1.0"),
+        ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true))
+        .arg(Arg::with_name("LOGSCALE").long("logscale"))
 }
 
 fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
@@ -304,44 +315,44 @@ impl Latency {
     }
 }
 
-fn handle_plot_text_subcommand(matches: &ArgMatches) -> Result<()> {
+fn handle_plot_subcommand(matches: &ArgMatches) -> Result<()> {
     let mut options = ekvsb::plot::PlotOptions::new();
-    options.sampling_rate(track_any_err!(
-        matches
-            .value_of("SAMPLING_RATE")
-            .expect("never fails")
-            .parse()
-    )?);
-    if let Some(y_max) = matches.value_of("Y_MAX") {
-        options.y_max(track_any_err!(y_max.parse())?);
-    }
-    let results: Vec<TaskResult> = track_any_err!(
-        serde_json::from_reader(stdin()),
-        "Malformed run result JSON"
-    )?;
-    let text = track!(options.plot_text(&results))?;
-    println!("{}", text);
-    Ok(())
-}
 
-fn handle_plot_svg_subcommand(matches: &ArgMatches) -> Result<()> {
-    let svg_file = matches.value_of("SVG_FILE").expect("never fails");
-    let mut options = ekvsb::plot::PlotOptions::new();
-    options.sampling_rate(track_any_err!(
+    let matches = if let Some(matches) = matches.subcommand_matches("text") {
+        options.terminal = "dumb".to_owned();
+        matches
+    } else if let Some(matches) = matches.subcommand_matches("png") {
+        let width = matches.value_of("WIDTH").expect("never fails");
+        let height = matches.value_of("HEIGHT").expect("never fails");
+        options.terminal = format!("pngcairo size {}, {}", width, height);
+
+        let output_file = matches.value_of("OUTPUT_FILE").expect("never fails");
+        options.output_file = output_file.to_string();
+
+        matches
+    } else {
+        eprintln!("Usage: {}", matches.usage());
+        std::process::exit(1);
+    };
+    options.sampling_rate = track_any_err!(
         matches
             .value_of("SAMPLING_RATE")
             .expect("never fails")
             .parse()
-    )?);
-    if let Some(y_max) = matches.value_of("Y_MAX") {
-        options.y_max(track_any_err!(y_max.parse())?);
+    )?;
+    options.logscale = matches.is_present("LOGSCALE");
+    if let Some(title) = matches.value_of("TITLE") {
+        options.title = title.to_string();
     }
+    if let Some(y_max) = matches.value_of("Y_MAX") {
+        options.y_max = Some(track_any_err!(y_max.parse())?);
+    }
+
     let results: Vec<TaskResult> = track_any_err!(
         serde_json::from_reader(stdin()),
         "Malformed run result JSON"
     )?;
-    track!(options.plot_svg(&results, svg_file))?;
-    println!("SVG FILE: {}", svg_file);
+    track!(options.plot(&results))?;
     Ok(())
 }
 

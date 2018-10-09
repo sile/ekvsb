@@ -1,9 +1,5 @@
-use plotlib::page::Page;
-use plotlib::scatter::{Scatter, Style};
-use plotlib::style::Point;
-use plotlib::view::View;
+use gnuplot::{AutoOption, AxesCommon, Figure, Rotate};
 use rand::{self, Rng};
-use std::path::Path;
 use trackable::error::Failed;
 
 use task::TaskResult;
@@ -11,41 +7,29 @@ use Result;
 
 #[derive(Debug)]
 pub struct PlotOptions {
-    sampling_rate: f64,
-    y_max: Option<f64>,
+    pub title: String,
+    pub output_file: String,
+    pub terminal: String,
+    pub sampling_rate: f64,
+    pub logscale: bool,
+    pub y_max: Option<f64>,
 }
 impl PlotOptions {
     pub fn new() -> PlotOptions {
         PlotOptions {
+            title: String::new(),
+            output_file: String::new(),
+            terminal: "dumb".to_owned(),
             sampling_rate: 1.0,
+            logscale: false,
             y_max: None,
         }
     }
 
-    pub fn sampling_rate(&mut self, sampling_rate: f64) -> &mut Self {
-        self.sampling_rate = sampling_rate;
-        self
-    }
-
-    pub fn y_max(&mut self, y_max: f64) -> &mut Self {
-        self.y_max = Some(y_max);
-        self
-    }
-
-    pub fn plot_text(&self, results: &[TaskResult]) -> Result<String> {
-        track!(self.with_view(results, |v| Page::single(&v).to_text()))
-    }
-
-    pub fn plot_svg<P: AsRef<Path>>(&self, results: &[TaskResult], svg_file: P) -> Result<()> {
-        track!(self.with_view(results, |v| Page::single(&v).save(svg_file)))
-    }
-
-    fn with_view<F, T>(&self, results: &[TaskResult], f: F) -> Result<T>
-    where
-        F: FnOnce(View) -> T,
-    {
+    pub fn plot(&self, results: &[TaskResult]) -> Result<()> {
         track_assert!(self.sampling_rate > 0.0, Failed; self.sampling_rate);
         track_assert!(self.sampling_rate <= 1.0, Failed; self.sampling_rate);
+
         let times = results.iter().map(|r| r.elapsed).collect::<Vec<_>>();
         let data = times
             .iter()
@@ -53,18 +37,35 @@ impl PlotOptions {
             .enumerate()
             .map(|(x, y)| (x as f64, y.as_f64()))
             .filter(|_| rand::thread_rng().gen_range(0.0, 1.0) < self.sampling_rate)
-            .filter(|t| self.y_max.is_none() || Some(t.1) <= self.y_max)
             .collect::<Vec<_>>();
-        let s = Scatter::from_vec(&data).style(&Style::new().size(1.0));
-        let y_max = self
-            .y_max
-            .unwrap_or_else(|| times.iter().max().map(|x| x.as_f64()).unwrap_or(0.0));
-        let v = View::new()
-            .add(&s)
-            .x_range(0.0, times.len() as f64)
-            .y_range(0.0, y_max)
-            .x_label("Sequence Number")
-            .y_label("Latency Seconds");
-        Ok(f(v))
+        let xs = data.iter().map(|t| t.0);
+        let ys = data.iter().map(|t| t.1);
+
+        let x_label = if self.sampling_rate == 1.0 {
+            "Sequence Number".to_owned()
+        } else {
+            format!("Sequence Number (sampling-rate={})", self.sampling_rate)
+        };
+
+        let mut fg = Figure::new();
+        {
+            let axes = fg.axes2d();
+            axes.set_title(&self.title, &[])
+                .points(xs, ys, &[])
+                .set_x_label(&x_label, &[])
+                .set_x_ticks(Some((AutoOption::Auto, 0)), &[], &[Rotate(270.0)])
+                .set_x_range(AutoOption::Fix(0.0), AutoOption::Fix(results.len() as f64))
+                .set_y_label("Latency Seconds", &[])
+                .set_y_range(
+                    AutoOption::Auto,
+                    self.y_max.map_or(AutoOption::Auto, AutoOption::Fix),
+                );
+            if self.logscale {
+                axes.set_y_log(Some(10.0));
+            }
+        }
+        fg.set_terminal(&self.terminal, &self.output_file);
+        fg.show();
+        Ok(())
     }
 }
