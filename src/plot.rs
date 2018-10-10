@@ -46,6 +46,13 @@ impl PlotOptions {
         } else {
             format!("Sequence Number (sampling-rate={})", self.sampling_rate)
         };
+        let mut y_label = "Latency Seconds".to_owned();
+        if let Some(y_max) = self.y_max {
+            let out_of_ranges = data.iter().filter(|t| t.1 > y_max).count();
+            if out_of_ranges > 0 {
+                y_label = format!("Latency Seconds (overflowed-samples={})", out_of_ranges);
+            }
+        };
 
         let mut fg = Figure::new();
         {
@@ -55,7 +62,7 @@ impl PlotOptions {
                 .set_x_label(&x_label, &[])
                 .set_x_ticks(Some((AutoOption::Auto, 0)), &[], &[Rotate(270.0)])
                 .set_x_range(AutoOption::Fix(0.0), AutoOption::Fix(results.len() as f64))
-                .set_y_label("Latency Seconds", &[])
+                .set_y_label(&y_label, &[])
                 .set_y_range(
                     AutoOption::Auto,
                     self.y_max.map_or(AutoOption::Auto, AutoOption::Fix),
