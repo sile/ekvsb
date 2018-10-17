@@ -1,3 +1,5 @@
+extern crate cannyls;
+extern crate futures;
 extern crate gnuplot;
 extern crate percent_encoding;
 extern crate rand;

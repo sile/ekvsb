@@ -13,7 +13,7 @@ extern crate trackable;
 
 use byte_unit::Byte;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use ekvsb::kvs::KeyValueStore;
+use ekvsb::kvs::{self, KeyValueStore};
 use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
 use ekvsb::Result;
@@ -39,6 +39,20 @@ fn main() -> trackable::result::MainResult {
                 ).subcommand(SubCommand::with_name("builtin::hashmap"))
                 .subcommand(SubCommand::with_name("builtin::btreemap"))
                 .subcommand(
+                    SubCommand::with_name("cannyls")
+                        .arg(Arg::with_name("FILE").index(1).required(true))
+                        .arg(
+                            Arg::with_name("CAPACITY")
+                                .long("capacity")
+                                .takes_value(true)
+                                .default_value("1GiB"),
+                        ).arg(
+                            Arg::with_name("JOURNAL_SYNC_INTERVAL")
+                                .long("journal-sync-interval")
+                                .takes_value(true)
+                                .default_value("4096"),
+                        ).arg(Arg::with_name("WITHOUT_DEVICE").long("without-device")),
+                ).subcommand(
                     SubCommand::with_name("rocksdb")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
                 ).subcommand(
@@ -141,7 +155,7 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
 
     if let Some(matches) = matches.subcommand_matches("builtin::fs") {
         let dir = matches.value_of("DIR").expect("never fails");
-        let kvs = track!(ekvsb::kvs::FileSystemKvs::new(dir))?;
+        let kvs = track!(kvs::FileSystemKvs::new(dir))?;
         track!(execute(kvs, workload))?;
     } else if let Some(_matches) = matches.subcommand_matches("builtin::hashmap") {
         let kvs = HashMap::new();
@@ -149,13 +163,35 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
     } else if let Some(_matches) = matches.subcommand_matches("builtin::btreemap") {
         let kvs = BTreeMap::new();
         track!(execute(kvs, workload))?;
+    } else if let Some(matches) = matches.subcommand_matches("cannyls") {
+        let file = matches.value_of("FILE").expect("never fails");
+        let capacity = track!(parse_size_u64(
+            matches.value_of("CAPACITY").expect("never fails")
+        ))?;
+        let journal_sync_interval = track_any_err!(
+            matches
+                .value_of("JOURNAL_SYNC_INTERVAL")
+                .expect("never fails")
+                .parse()
+        )?;
+        let mut options = kvs::CannyLsOptions {
+            capacity,
+            journal_sync_interval,
+        };
+        if matches.is_present("WITHOUT_DEVICE") {
+            let kvs = track!(kvs::CannyLsStorage::new(file, &options))?;
+            track!(execute(kvs, workload))?;
+        } else {
+            let kvs = track!(kvs::CannyLsDevice::new(file, &options))?;
+            track!(execute(kvs, workload))?;
+        }
     } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
         let dir = matches.value_of("DIR").expect("never fails");
-        let kvs = track!(ekvsb::kvs::RocksDb::new(dir))?;
+        let kvs = track!(kvs::RocksDb::new(dir))?;
         track!(execute(kvs, workload))?;
     } else if let Some(matches) = matches.subcommand_matches("sled") {
         let dir = matches.value_of("DIR").expect("never fails");
-        let kvs = track!(ekvsb::kvs::SledTree::new(dir))?;
+        let kvs = track!(kvs::SledTree::new(dir))?;
         track!(execute(kvs, workload))?;
     } else {
         eprintln!("Usage: {}", matches.usage());
@@ -389,6 +425,12 @@ fn parse_size(s: &str) -> Result<usize> {
     let size = Byte::from_string(s)
         .map_err(|e| track!(Failed.cause(format!("Parse Error: {:?} ({:?})", s, e))))?;
     Ok(size.get_bytes() as usize)
+}
+
+fn parse_size_u64(s: &str) -> Result<u64> {
+    let size = Byte::from_string(s)
+        .map_err(|e| track!(Failed.cause(format!("Parse Error: {:?} ({:?})", s, e))))?;
+    Ok(size.get_bytes() as u64)
 }
 
 fn stdin() -> impl Read {

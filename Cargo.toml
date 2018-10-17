@@ -11,7 +11,9 @@ license = "MIT"
 
 [dependencies]
 byte-unit = "1"
+cannyls = "0.9"
 clap = "2"
+futures = "0.1"
 gnuplot = "0.0"
 indicatif = "0.9"
 percent-encoding = "1"

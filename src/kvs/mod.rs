@@ -4,10 +4,12 @@ use Result;
 
 use task::Existence;
 
+pub use self::cannyls::{CannyLsDevice, CannyLsOptions, CannyLsStorage};
 pub use self::fs::FileSystemKvs;
 pub use self::rocksdb::RocksDb;
 pub use self::sled::SledTree;
 
+mod cannyls;
 mod fs;
 mod rocksdb;
 mod sled;
