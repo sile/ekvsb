@@ -1,5 +1,6 @@
 use gnuplot::{AutoOption, AxesCommon, Figure, Rotate};
 use rand::{self, Rng};
+use std::f64::EPSILON;
 use trackable::error::Failed;
 
 use task::TaskResult;
@@ -41,7 +42,7 @@ impl PlotOptions {
         let xs = data.iter().map(|t| t.0);
         let ys = data.iter().map(|t| t.1);
 
-        let x_label = if self.sampling_rate == 1.0 {
+        let x_label = if (self.sampling_rate - 1.0).abs() < EPSILON {
             "Sequence Number".to_owned()
         } else {
             format!("Sequence Number (sampling-rate={})", self.sampling_rate)
@@ -74,5 +75,10 @@ impl PlotOptions {
         fg.set_terminal(&self.terminal, &self.output_file);
         fg.show();
         Ok(())
+    }
+}
+impl Default for PlotOptions {
+    fn default() -> Self {
+        Self::new()
     }
 }

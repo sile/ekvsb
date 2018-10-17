@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::hash::BuildHasher;
 
 use Result;
 
@@ -22,7 +23,7 @@ pub trait KeyValueStore {
     fn delete(&mut self, key: &[u8]) -> Result<Existence>;
 }
 
-impl KeyValueStore for HashMap<Vec<u8>, Vec<u8>> {
+impl<S: BuildHasher> KeyValueStore for HashMap<Vec<u8>, Vec<u8>, S> {
     type OwnedValue = Vec<u8>;
 
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {

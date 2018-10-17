@@ -75,7 +75,7 @@ impl Existence {
         Existence(None)
     }
 
-    pub fn exists(&self) -> Option<bool> {
+    pub fn exists(self) -> Option<bool> {
         self.0
     }
 }
@@ -84,11 +84,11 @@ impl Existence {
 pub struct Seconds(f64);
 impl Seconds {
     pub fn new(duration: Duration) -> Self {
-        let x = duration.as_secs() as f64 + duration.subsec_nanos() as f64 / 1_000_000_000.0;
+        let x = duration.as_secs() as f64 + f64::from(duration.subsec_nanos()) / 1_000_000_000.0;
         Seconds(x)
     }
 
-    pub fn as_f64(&self) -> f64 {
+    pub fn as_f64(self) -> f64 {
         self.0
     }
 }
