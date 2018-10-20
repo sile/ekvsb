@@ -1,4 +1,5 @@
 use cannyls;
+use cannyls::deadline::Deadline;
 use cannyls::device::{Device, DeviceBuilder};
 use cannyls::lump::{LumpData, LumpId};
 use cannyls::nvm::FileNvm;
@@ -45,6 +46,7 @@ impl CannyLsDevice {
         };
 
         let device = DeviceBuilder::new().spawn(|| Ok(storage));
+        let device = track!(wait(device.wait_for_running()))?;
         Ok(CannyLsDevice { device })
     }
 }
@@ -73,6 +75,12 @@ impl KeyValueStore for CannyLsDevice {
         let id = track!(bytes_to_lump_id(key))?;
         let exists = track!(wait(self.device.handle().request().delete(id)))?;
         Ok(Existence::new(exists))
+    }
+}
+impl Drop for CannyLsDevice {
+    fn drop(&mut self) {
+        self.device.stop(Deadline::Immediate);
+        let _ = wait(&mut self.device);
     }
 }
 
