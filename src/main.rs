@@ -13,6 +13,7 @@ use ekvsb::workload::{Workload, WorkloadExecutor};
 use ekvsb::Result;
 use indicatif::ProgressBar;
 use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -276,7 +277,7 @@ where
     let mut key = vec![0u8; key_size];
     for _ in 0..population_size {
         for b in &mut key {
-            *b = *rng.choose(&CHARS[..]).expect("never fails");
+            *b = *CHARS.choose(&mut rng).expect("never fails");
         }
         tasks.push(f(track!(Key::from_utf8(key.clone()))?));
     }
@@ -289,7 +290,7 @@ where
         }
 
         let mut shuffle_rng = StdRng::from_seed(seed_bytes);
-        shuffle_rng.shuffle(&mut tasks);
+        tasks.shuffle(&mut shuffle_rng);
     }
 
     tasks.truncate(count);
