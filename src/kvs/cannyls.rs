@@ -55,12 +55,11 @@ impl KeyValueStore for CannyLsDevice {
 
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {
         let id = track!(bytes_to_lump_id(key))?;
-        let data = track!(
-            self.device
-                .handle()
-                .allocate_lump_data_with_bytes(value)
-                .map_err(into_failure)
-        )?;
+        let data = track!(self
+            .device
+            .handle()
+            .allocate_lump_data_with_bytes(value)
+            .map_err(into_failure))?;
         let new = track!(wait(self.device.handle().request().put(id, data)))?;
         Ok(Existence::new(!new))
     }
@@ -120,11 +119,10 @@ impl KeyValueStore for CannyLsStorage {
 
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {
         let id = track!(bytes_to_lump_id(key))?;
-        let data = track!(
-            self.storage
-                .allocate_lump_data_with_bytes(value)
-                .map_err(into_failure)
-        )?;
+        let data = track!(self
+            .storage
+            .allocate_lump_data_with_bytes(value)
+            .map_err(into_failure))?;
         let new = track!(self.storage.put(&id, &data).map_err(into_failure))?;
         Ok(Existence::new(!new))
     }

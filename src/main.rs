@@ -33,10 +33,12 @@ fn main() -> trackable::result::MainResult {
                         .long("memory-load")
                         .takes_value(true)
                         .default_value("0GiB"),
-                ).subcommand(
+                )
+                .subcommand(
                     SubCommand::with_name("builtin::fs")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
-                ).subcommand(SubCommand::with_name("builtin::hashmap"))
+                )
+                .subcommand(SubCommand::with_name("builtin::hashmap"))
                 .subcommand(SubCommand::with_name("builtin::btreemap"))
                 .subcommand(
                     SubCommand::with_name("cannyls")
@@ -46,20 +48,25 @@ fn main() -> trackable::result::MainResult {
                                 .long("capacity")
                                 .takes_value(true)
                                 .default_value("1GiB"),
-                        ).arg(
+                        )
+                        .arg(
                             Arg::with_name("JOURNAL_SYNC_INTERVAL")
                                 .long("journal-sync-interval")
                                 .takes_value(true)
                                 .default_value("4096"),
-                        ).arg(Arg::with_name("WITHOUT_DEVICE").long("without-device")),
-                ).subcommand(
+                        )
+                        .arg(Arg::with_name("WITHOUT_DEVICE").long("without-device")),
+                )
+                .subcommand(
                     SubCommand::with_name("rocksdb")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
-                ).subcommand(
+                )
+                .subcommand(
                     SubCommand::with_name("sled")
                         .arg(Arg::with_name("DIR").index(1).required(true)),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
             SubCommand::with_name("workload")
                 .subcommand(
                     workload_subcommand("PUT").arg(
@@ -68,9 +75,11 @@ fn main() -> trackable::result::MainResult {
                             .takes_value(true)
                             .default_value("1KiB"),
                     ),
-                ).subcommand(workload_subcommand("GET"))
+                )
+                .subcommand(workload_subcommand("GET"))
                 .subcommand(workload_subcommand("DELETE")),
-        ).subcommand(SubCommand::with_name("summary"))
+        )
+        .subcommand(SubCommand::with_name("summary"))
         .subcommand(
             SubCommand::with_name("plot")
                 .subcommand(plot_subcommand("text"))
@@ -82,14 +91,16 @@ fn main() -> trackable::result::MainResult {
                                 .long("width")
                                 .takes_value(true)
                                 .default_value("1200"),
-                        ).arg(
+                        )
+                        .arg(
                             Arg::with_name("HEIGHT")
                                 .long("height")
                                 .takes_value(true)
                                 .default_value("800"),
                         ),
                 ),
-        ).get_matches();
+        )
+        .get_matches();
     if let Some(matches) = matches.subcommand_matches("run") {
         track!(handle_run_subcommand(matches))?;
     } else if let Some(matches) = matches.subcommand_matches("workload") {
@@ -112,16 +123,19 @@ fn workload_subcommand(name: &'static str) -> App<'static, 'static> {
                 .long("count")
                 .takes_value(true)
                 .default_value("1000"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("POPULATION_SIZE")
                 .long("population-size")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("KEY_SIZE")
                 .long("key-size")
                 .takes_value(true)
                 .default_value("10"),
-        ).arg(Arg::with_name("SEED").long("seed").takes_value(true))
+        )
+        .arg(Arg::with_name("SEED").long("seed").takes_value(true))
         .arg(
             Arg::with_name("SHUFFLE")
                 .long("shuffle")
@@ -138,7 +152,8 @@ fn plot_subcommand(name: &'static str) -> App<'static, 'static> {
                 .long("sampling-rate")
                 .takes_value(true)
                 .default_value("1.0"),
-        ).arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true))
+        )
+        .arg(Arg::with_name("Y_MAX").long("y-max").takes_value(true))
         .arg(Arg::with_name("LOGSCALE").long("logscale"))
 }
 
@@ -168,12 +183,10 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
         let capacity = track!(parse_size_u64(
             matches.value_of("CAPACITY").expect("never fails")
         ))?;
-        let journal_sync_interval = track_any_err!(
-            matches
-                .value_of("JOURNAL_SYNC_INTERVAL")
-                .expect("never fails")
-                .parse()
-        )?;
+        let journal_sync_interval = track_any_err!(matches
+            .value_of("JOURNAL_SYNC_INTERVAL")
+            .expect("never fails")
+            .parse())?;
         let mut options = kvs::CannyLsOptions {
             capacity,
             journal_sync_interval,
@@ -399,12 +412,10 @@ fn handle_plot_subcommand(matches: &ArgMatches) -> Result<()> {
         eprintln!("Usage: {}", matches.usage());
         std::process::exit(1);
     };
-    options.sampling_rate = track_any_err!(
-        matches
-            .value_of("SAMPLING_RATE")
-            .expect("never fails")
-            .parse()
-    )?;
+    options.sampling_rate = track_any_err!(matches
+        .value_of("SAMPLING_RATE")
+        .expect("never fails")
+        .parse())?;
     options.logscale = matches.is_present("LOGSCALE");
     if let Some(title) = matches.value_of("TITLE") {
         options.title = title.to_string();

@@ -49,13 +49,11 @@ impl KeyValueStore for FileSystemKvs {
             path.parent(),
             Failed
         )))?;
-        let mut file = track_any_err!(
-            OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(path)
-        )?;
+        let mut file = track_any_err!(OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path))?;
         track_any_err!(file.write_all(value))?;
         Ok(Existence::unknown())
     }
