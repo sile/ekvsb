@@ -1,13 +1,7 @@
-extern crate byte_unit;
 #[macro_use]
 extern crate clap;
-extern crate ekvsb;
-extern crate indicatif;
-extern crate rand;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 #[macro_use]
 extern crate trackable;
 
@@ -187,7 +181,7 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
             .value_of("JOURNAL_SYNC_INTERVAL")
             .expect("never fails")
             .parse())?;
-        let mut options = kvs::CannyLsOptions {
+        let options = kvs::CannyLsOptions {
             capacity,
             journal_sync_interval,
         };

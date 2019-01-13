@@ -1,9 +1,8 @@
+use crate::kvs::KeyValueStore;
+use crate::task::Existence;
+use crate::Result;
 use sled::{ConfigBuilder, Tree};
 use std::path::Path;
-
-use kvs::KeyValueStore;
-use task::Existence;
-use Result;
 
 #[derive(Debug)]
 pub struct SledTree {

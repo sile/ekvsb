@@ -1,9 +1,8 @@
+use crate::kvs::KeyValueStore;
+use crate::task::Existence;
+use crate::Result;
 use rocksdb::{DBVector, DB};
 use std::path::Path;
-
-use kvs::KeyValueStore;
-use task::Existence;
-use Result;
 
 #[derive(Debug)]
 pub struct RocksDb {

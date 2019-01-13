@@ -1,3 +1,6 @@
+use crate::kvs::KeyValueStore;
+use crate::task::Existence;
+use crate::Result;
 use cannyls;
 use cannyls::deadline::Deadline;
 use cannyls::device::{Device, DeviceBuilder};
@@ -9,10 +12,6 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use trackable::error::{ErrorKindExt, Failed, Failure};
-
-use kvs::KeyValueStore;
-use task::Existence;
-use Result;
 
 #[derive(Debug)]
 pub struct CannyLsOptions {

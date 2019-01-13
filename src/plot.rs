@@ -1,10 +1,9 @@
+use crate::task::TaskResult;
+use crate::Result;
 use gnuplot::{AutoOption, AxesCommon, Figure, Rotate};
 use rand::{self, Rng};
 use std::f64::EPSILON;
 use trackable::error::Failed;
-
-use task::TaskResult;
-use Result;
 
 #[derive(Debug)]
 pub struct PlotOptions {

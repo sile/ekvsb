@@ -1,8 +1,7 @@
+use crate::kvs::KeyValueStore;
+use crate::task::{Existence, Method, Seconds, Task, TaskResult};
 use std::time::Instant;
 use std::vec;
-
-use kvs::KeyValueStore;
-use task::{Existence, Method, Seconds, Task, TaskResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Workload(Vec<Task>);

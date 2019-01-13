@@ -1,9 +1,7 @@
+use crate::task::Existence;
+use crate::Result;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::BuildHasher;
-
-use Result;
-
-use task::Existence;
 
 pub use self::cannyls::{CannyLsDevice, CannyLsOptions, CannyLsStorage};
 pub use self::fs::FileSystemKvs;

@@ -1,9 +1,8 @@
+use crate::Result;
 use rand::{self, RngCore};
 use std::cmp::Ordering;
 use std::time::Duration;
 use trackable::error::Failure;
-
-use Result;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

@@ -1,3 +1,6 @@
+use crate::kvs::KeyValueStore;
+use crate::task::Existence;
+use crate::Result;
 use percent_encoding::{percent_encode, DEFAULT_ENCODE_SET};
 use siphasher::sip::SipHasher13;
 use std::fs::{self, File, OpenOptions};
@@ -5,10 +8,6 @@ use std::hash::{Hash, Hasher};
 use std::io::{ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use trackable::error::Failed;
-
-use kvs::KeyValueStore;
-use task::Existence;
-use Result;
 
 #[derive(Debug)]
 pub struct FileSystemKvs {
