@@ -577,6 +577,7 @@ fn stdout() -> impl Write {
     BufWriter::new(std::io::stdout())
 }
 
+#[allow(clippy::cyclomatic_complexity)]
 fn parse_rocksdb_options(matches: &ArgMatches) -> Result<rocksdb::Options> {
     let mut options = rocksdb::Options::default();
     if matches.is_present("ADVISE_RANDOM_ON_OPEN") {
