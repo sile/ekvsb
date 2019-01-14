@@ -15,6 +15,7 @@ use indicatif::ProgressBar;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
+use rocksdb;
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, BufWriter, Read, Write};
 use trackable::error::{ErrorKindExt, Failed};
@@ -54,7 +55,135 @@ fn main() -> trackable::result::MainResult {
                 )
                 .subcommand(
                     SubCommand::with_name("rocksdb")
-                        .arg(Arg::with_name("DIR").index(1).required(true)),
+                        .arg(Arg::with_name("DIR").index(1).required(true))
+                        .arg(
+                            Arg::with_name("PARALLELISM")
+                                .long("parallelism")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("OPTIMIZE_LEVEL_STYLE_COMPACTION")
+                                .long("optimize-level-style-compaction")
+                                .takes_value(true)
+                                .value_name("MEMTABLE_MEMORY_BUDGET"),
+                        )
+                        .arg(
+                            Arg::with_name("COMPACTION_READAHEAD_SIZE")
+                                .takes_value(true)
+                                .long("compaction-readahead-size"),
+                        )
+                        .arg(
+                            Arg::with_name("OPTIMIZE_FOR_POINT_LOOKUP")
+                                .long("optimize-for-point-lookup")
+                                .takes_value(true)
+                                .value_name("CACHE_SIZE"),
+                        )
+                        .arg(Arg::with_name("USE_FSYNC").long("use-fsync"))
+                        .arg(
+                            Arg::with_name("BYTES_PER_SYNC")
+                                .long("bytes-per-sync")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("ALLOW_CONCURRENT_MEMTABLE_WRITE")
+                                .long("allow-concurrent-memtable-write"),
+                        )
+                        .arg(Arg::with_name("USE_DIRECT_READS").long("use-direct-reads"))
+                        .arg(
+                            Arg::with_name("USE_DIRECT_IO_FOR_FLUSH_AND_COMPACTION")
+                                .long("use-direct-io-for-flush-and-compaction"),
+                        )
+                        .arg(
+                            Arg::with_name("TABLE_CACHE_NUM_SHARD_BITS")
+                                .long("table-cache-num-shard-bits")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MIN_WRITE_BUFFER_NUMBER")
+                                .long("min-write-buffer-number")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_WRITE_BUFFER_NUMBER")
+                                .long("max-write-buffer-number")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("WRITE_BUFFER_SIZE")
+                                .long("write-buffer-size")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_BYTES_FOR_LEVEL_BASE")
+                                .long("max-bytes-for-level-base")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_BYTES_FOR_LEVEL_MULTIPLIER")
+                                .long("max-bytes-for-level-multiplier")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_MANIFEST_FILE_SIZE")
+                                .long("max-manifest-file-size")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("TARGET_FILE_SIZE_BASE")
+                                .long("target-file-size-base")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MIN_WRITE_BUFFER_NUMBER_TO_MERGE")
+                                .long("min-write-buffer-number-to-merge")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("LEVEL_ZERO_FILE_NUM_COMPACTION_TRIGGER")
+                                .long("level-zero-file-num-compaction-trigger")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("LEVEL_ZERO_SLOWDOWN_WRITES_TRIGGER")
+                                .long("level-zero-slowdown-writes-trigger")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("LEVEL_ZERO_STOP_WRITES_TRIGGER")
+                                .long("level-zero-stop-writes-trigger")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("COMPACTION_STYLE")
+                                .long("compaction-style")
+                                .takes_value(true)
+                                .possible_values(&["LEVEL", "UNIVERSAL", "FIFO"]),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_BACKGROUND_COMPACTIONS")
+                                .long("max-background-compactions")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MAX_BACKGROUND_FLUSHES")
+                                .long("max-background-flushes")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("DISABLE_AUTO_COMPACTIONS")
+                                .long("disable-auto-compactions"),
+                        )
+                        .arg(Arg::with_name("ADVISE_RANDOM_ON_OPEN").long("advise-random-on-open"))
+                        .arg(
+                            Arg::with_name("NUM_LEVELS")
+                                .long("num-levels")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("MEMTABLE_PREFIX_BLOOM_RATIO")
+                                .long("memtable-prefix-bloom-ratio")
+                                .takes_value(true),
+                        ),
                 )
                 .subcommand(
                     SubCommand::with_name("sled")
@@ -195,7 +324,8 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
         }
     } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
         let dir = matches.value_of("DIR").expect("never fails");
-        let kvs = track!(kvs::RocksDb::new(dir))?;
+        let options = track!(parse_rocksdb_options(matches))?;
+        let kvs = track!(kvs::RocksDb::with_options(dir, &options))?;
         track!(execute(kvs, workload))?;
     } else if let Some(matches) = matches.subcommand_matches("sled") {
         let dir = matches.value_of("DIR").expect("never fails");
@@ -445,4 +575,100 @@ fn stdin() -> impl Read {
 
 fn stdout() -> impl Write {
     BufWriter::new(std::io::stdout())
+}
+
+fn parse_rocksdb_options(matches: &ArgMatches) -> Result<rocksdb::Options> {
+    let mut options = rocksdb::Options::default();
+    if matches.is_present("ADVISE_RANDOM_ON_OPEN") {
+        options.set_advise_random_on_open(true);
+    }
+    if matches.is_present("ALLOW_CONCURRENT_MEMTABLE_WRITE") {
+        options.set_allow_concurrent_memtable_write(true);
+    }
+    if matches.is_present("DISABLE_AUTO_COMPACTIONS") {
+        options.set_disable_auto_compactions(true);
+    }
+    if matches.is_present("USE_DIRECT_IO_FOR_FLUSH_AND_COMPACTION") {
+        options.set_use_direct_io_for_flush_and_compaction(true);
+    }
+    if matches.is_present("USE_DIRECT_READS") {
+        options.set_use_direct_reads(true);
+    }
+    if matches.is_present("USE_FSYNC") {
+        options.set_use_fsync(true);
+    }
+    if let Some(v) = matches.value_of("BYTES_PER_SYNC") {
+        options.set_bytes_per_sync(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("COMPACTION_READAHEAD_SIZE") {
+        options.set_compaction_readahead_size(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("COMPACTION_STYLE") {
+        let style = match v {
+            "LEVEL" => rocksdb::DBCompactionStyle::Level,
+            "UNIVERSAL" => rocksdb::DBCompactionStyle::Universal,
+            "FIFO" => rocksdb::DBCompactionStyle::Fifo,
+            _ => unreachable!(),
+        };
+        options.set_compaction_style(style);
+    }
+    if let Some(v) = matches.value_of("PARALLELISM") {
+        options.increase_parallelism(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("LEVEL_ZERO_FILE_NUM_COMPACTION_TRIGGER") {
+        options.set_level_zero_file_num_compaction_trigger(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("LEVEL_ZERO_SLOWDOWN_WRITES_TRIGGER") {
+        options.set_level_zero_slowdown_writes_trigger(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("LEVEL_ZERO_STOP_WRITES_TRIGGER") {
+        options.set_level_zero_stop_writes_trigger(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_BACKGROUND_COMPACTIONS") {
+        options.set_max_background_compactions(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_BACKGROUND_FLUSHES") {
+        options.set_max_background_flushes(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_BYTES_FOR_LEVEL_BASE") {
+        options.set_max_bytes_for_level_base(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_BYTES_FOR_LEVEL_MULTIPLIER") {
+        options.set_max_bytes_for_level_multiplier(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_MANIFEST_FILE_SIZE") {
+        options.set_max_manifest_file_size(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MAX_WRITE_BUFFER_NUMBER") {
+        options.set_max_write_buffer_number(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MEMTABLE_PREFIX_BLOOM_RATIO") {
+        options.set_memtable_prefix_bloom_ratio(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MIN_WRITE_BUFFER_NUMBER") {
+        options.set_min_write_buffer_number(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("MIN_WRITE_BUFFER_NUMBER_TO_MERGE") {
+        options.set_min_write_buffer_number_to_merge(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("NUM_LEVELS") {
+        options.set_num_levels(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("OPTIMIZE_FOR_POINT_LOOKUP") {
+        options.optimize_for_point_lookup(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("OPTIMIZE_LEVEL_STYLE_COMPACTION") {
+        options.optimize_level_style_compaction(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("TABLE_CACHE_NUM_SHARD_BITS") {
+        options.set_table_cache_num_shard_bits(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("TARGET_FILE_SIZE_BASE") {
+        options.set_target_file_size_base(track_any_err!(v.parse())?);
+    }
+    if let Some(v) = matches.value_of("WRITE_BUFFER_SIZE") {
+        options.set_write_buffer_size(track_any_err!(v.parse())?);
+    }
+
+    Ok(options)
 }

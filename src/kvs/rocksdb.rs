@@ -1,7 +1,7 @@
 use crate::kvs::KeyValueStore;
 use crate::task::Existence;
 use crate::Result;
-use rocksdb::{DBVector, DB};
+use rocksdb::{DBVector, Options, DB};
 use std::path::Path;
 
 #[derive(Debug)]
@@ -11,7 +11,12 @@ pub struct RocksDb {
 impl RocksDb {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db = track_any_err!(DB::open_default(path))?;
-        Ok(RocksDb { db })
+        Ok(Self { db })
+    }
+
+    pub fn with_options<P: AsRef<Path>>(path: P, options: &Options) -> Result<Self> {
+        let db = track_any_err!(DB::open(options, path))?;
+        Ok(Self { db })
     }
 }
 impl KeyValueStore for RocksDb {
