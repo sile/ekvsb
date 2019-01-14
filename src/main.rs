@@ -325,7 +325,7 @@ fn handle_run_subcommand(matches: &ArgMatches) -> Result<()> {
     } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
         let dir = matches.value_of("DIR").expect("never fails");
         let options = track!(parse_rocksdb_options(matches))?;
-        let kvs = track!(kvs::RocksDb::with_options(dir, &options))?;
+        let kvs = track!(kvs::RocksDb::with_options(dir, options))?;
         track!(execute(kvs, workload))?;
     } else if let Some(matches) = matches.subcommand_matches("sled") {
         let dir = matches.value_of("DIR").expect("never fails");

@@ -14,8 +14,9 @@ impl RocksDb {
         Ok(Self { db })
     }
 
-    pub fn with_options<P: AsRef<Path>>(path: P, options: &Options) -> Result<Self> {
-        let db = track_any_err!(DB::open(options, path))?;
+    pub fn with_options<P: AsRef<Path>>(path: P, mut options: Options) -> Result<Self> {
+        options.create_if_missing(true);
+        let db = track_any_err!(DB::open(&options, path))?;
         Ok(Self { db })
     }
 }
