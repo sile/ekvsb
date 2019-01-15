@@ -177,6 +177,42 @@ struct RocksDbOpt {
 
     #[structopt(long)]
     memtable_prefix_bloom_ratio: Option<f64>,
+
+    #[structopt(long)]
+    memtable_factory_vector: bool,
+
+    #[structopt(long)]
+    memtable_factory_hashskiplist_bucket_count: Option<usize>,
+
+    #[structopt(long)]
+    memtable_factory_hashskiplist_height: Option<i32>,
+
+    #[structopt(long)]
+    memtable_factory_hashskiplist_branching_factor: Option<i32>,
+
+    #[structopt(long)]
+    memtable_factory_hashlinklist_bucket_count: Option<usize>,
+
+    #[structopt(long)]
+    block_opt_block_size: Option<usize>,
+
+    #[structopt(long)]
+    block_opt_lru_cache: Option<usize>,
+
+    #[structopt(long)]
+    block_opt_disable_cache: bool,
+
+    #[structopt(long)]
+    block_opt_bloom_filter_bits_per_key: Option<i32>,
+
+    #[structopt(long)]
+    block_opt_bloom_filter_block_based: bool,
+
+    #[structopt(long)]
+    block_opt_cache_index_and_filter_blocks: bool,
+
+    #[structopt(long)]
+    block_opt_index_type: Option<BlockBasedIndexType>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -368,6 +404,16 @@ arg_enum! {
     }
 }
 
+arg_enum! {
+    #[derive(Debug)]
+    #[allow(clippy::enum_variant_names)]
+    enum BlockBasedIndexType {
+        BinarySearch,
+        HashSearch,
+        TwoLevelIndexSearch,
+    }
+}
+
 fn main() -> trackable::result::MainResult {
     let opt = Opt::from_args();
 
@@ -428,7 +474,7 @@ fn handle_run_subcommand(opt: &Opt, command: &RunCommand) -> Result<()> {
             }
         }
         RunCommand::RocksDb(opt) => {
-            let options = make_rocksdb_options(opt);
+            let options = track!(make_rocksdb_options(opt))?;
             let kvs = track!(kvs::RocksDb::with_options(&opt.dir, options))?;
             track!(execute(kvs, workload))?;
         }
@@ -667,7 +713,7 @@ fn stdout() -> impl Write {
 }
 
 #[allow(clippy::cyclomatic_complexity)]
-fn make_rocksdb_options(opt: &RocksDbOpt) -> rocksdb::Options {
+fn make_rocksdb_options(opt: &RocksDbOpt) -> Result<rocksdb::Options> {
     let mut options = rocksdb::Options::default();
     if opt.advise_random_on_open {
         options.set_advise_random_on_open(true);
@@ -758,5 +804,46 @@ fn make_rocksdb_options(opt: &RocksDbOpt) -> rocksdb::Options {
     if let Some(v) = opt.write_buffer_size {
         options.set_write_buffer_size(v);
     }
-    options
+    if opt.memtable_factory_vector {
+        options.set_memtable_factory(rocksdb::MemtableFactory::Vector);
+    } else if let Some(bucket_count) = opt.memtable_factory_hashskiplist_bucket_count {
+        let height = track_assert_some!(opt.memtable_factory_hashskiplist_height, Failed);
+        let branching_factor =
+            track_assert_some!(opt.memtable_factory_hashskiplist_branching_factor, Failed);
+        options.set_memtable_factory(rocksdb::MemtableFactory::HashSkipList {
+            bucket_count,
+            height,
+            branching_factor,
+        });
+    } else if let Some(bucket_count) = opt.memtable_factory_hashlinklist_bucket_count {
+        options.set_memtable_factory(rocksdb::MemtableFactory::HashLinkList { bucket_count });
+    }
+    let mut block_opts = rocksdb::BlockBasedOptions::default();
+    if let Some(v) = opt.block_opt_block_size {
+        block_opts.set_block_size(v);
+    }
+    if let Some(v) = opt.block_opt_lru_cache {
+        block_opts.set_lru_cache(v);
+    }
+    if opt.block_opt_disable_cache {
+        block_opts.disable_cache();
+    }
+    if let Some(bits_per_key) = opt.block_opt_bloom_filter_bits_per_key {
+        block_opts.set_bloom_filter(bits_per_key, opt.block_opt_bloom_filter_block_based);
+    }
+    if opt.block_opt_cache_index_and_filter_blocks {
+        block_opts.set_cache_index_and_filter_blocks(true);
+    }
+    if let Some(ref index_type) = opt.block_opt_index_type {
+        let t = match index_type {
+            BlockBasedIndexType::BinarySearch => rocksdb::BlockBasedIndexType::BinarySearch,
+            BlockBasedIndexType::HashSearch => rocksdb::BlockBasedIndexType::HashSearch,
+            BlockBasedIndexType::TwoLevelIndexSearch => {
+                rocksdb::BlockBasedIndexType::TwoLevelIndexSearch
+            }
+        };
+        block_opts.set_index_type(t);
+    }
+    options.set_block_based_table_factory(&block_opts);
+    Ok(options)
 }
