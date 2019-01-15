@@ -113,7 +113,7 @@ struct RocksDbOpt {
     bytes_per_sync: Option<u64>,
 
     #[structopt(long)]
-    allow_concurrent_memtable_write: bool,
+    disable_concurrent_memtable_write: bool,
 
     #[structopt(long)]
     use_direct_reads: bool,
@@ -170,7 +170,7 @@ struct RocksDbOpt {
     disable_auto_compactions: bool,
 
     #[structopt(long)]
-    advise_random_on_open: bool,
+    disable_advise_random_on_open: bool,
 
     #[structopt(long)]
     num_levels: Option<i32>,
@@ -193,6 +193,7 @@ struct RocksDbOpt {
     #[structopt(long)]
     memtable_factory_hashlinklist_bucket_count: Option<usize>,
 
+    // https://github.com/facebook/rocksdb/blob/2670fe8c73c66db6dad64bdf875e3342494e8ef2/include/rocksdb/table.h
     #[structopt(long)]
     block_opt_block_size: Option<usize>,
 
@@ -715,11 +716,15 @@ fn stdout() -> impl Write {
 #[allow(clippy::cyclomatic_complexity)]
 fn make_rocksdb_options(opt: &RocksDbOpt) -> Result<rocksdb::Options> {
     let mut options = rocksdb::Options::default();
-    if opt.advise_random_on_open {
-        options.set_advise_random_on_open(true);
+    if opt.disable_advise_random_on_open {
+        options.set_advise_random_on_open(false);
     }
-    if opt.allow_concurrent_memtable_write {
-        options.set_allow_concurrent_memtable_write(true);
+    if opt.disable_concurrent_memtable_write
+        || opt.memtable_factory_vector
+        || opt.memtable_factory_hashlinklist_bucket_count.is_some()
+        || opt.memtable_factory_hashskiplist_bucket_count.is_some()
+    {
+        options.set_allow_concurrent_memtable_write(false);
     }
     if opt.disable_auto_compactions {
         options.set_disable_auto_compactions(true);
