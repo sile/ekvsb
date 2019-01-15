@@ -95,6 +95,9 @@ struct RocksDbOpt {
     dir: PathBuf,
 
     #[structopt(long)]
+    force_default: bool,
+
+    #[structopt(long)]
     parallelism: Option<i32>,
 
     #[structopt(long)]
@@ -716,6 +719,10 @@ fn stdout() -> impl Write {
 #[allow(clippy::cyclomatic_complexity)]
 fn make_rocksdb_options(opt: &RocksDbOpt) -> Result<rocksdb::Options> {
     let mut options = rocksdb::Options::default();
+    if opt.force_default {
+        return Ok(options);
+    }
+
     if opt.disable_advise_random_on_open {
         options.set_advise_random_on_open(false);
     }
