@@ -22,7 +22,7 @@ Examples
 --------
 
 ```console
-$ ekvsb workload PUT --count 100000 --value-size 1KiB | ekvsb run rocksdb /tmp/rocksdb | ekvsb summary
+$ ekvsb workload put --count 100000 --value-size 1KiB | ekvsb run rocksdb /tmp/rocksdb | ekvsb summary
 {
   "oks": 100000,
   "errors": 0,

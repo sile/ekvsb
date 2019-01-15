@@ -263,7 +263,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ekvsb"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "byte-unit 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cannyls 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
