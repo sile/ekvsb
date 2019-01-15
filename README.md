@@ -18,6 +18,13 @@ Supported Key-Value Stores
 - [Sled](https://crates.io/crates/sled)
 - [CannyLS](https://crates.io/crates/cannyls)
 
+Installation
+------------
+
+```console
+$ cargo install ekvsb
+```
+
 Examples
 --------
 
