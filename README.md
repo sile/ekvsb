@@ -22,7 +22,7 @@ Installation
 ------------
 
 ```console
-# Ror RocksDB (on Debian)
+# For RocksDB (on Debian)
 $ sudo apt install libclang1
 $ export C_INCLUDE_PATH=/usr/lib/gcc/x86_64-linux-gnu/6/include/
 
