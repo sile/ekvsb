@@ -55,21 +55,19 @@ impl PlotOptions {
         };
 
         let mut fg = Figure::new();
-        {
-            let axes = fg.axes2d();
-            axes.set_title(&self.title, &[])
-                .points(xs, ys, &[])
-                .set_x_label(&x_label, &[])
-                .set_x_ticks(Some((AutoOption::Auto, 0)), &[], &[Rotate(270.0)])
-                .set_x_range(AutoOption::Fix(0.0), AutoOption::Fix(results.len() as f64))
-                .set_y_label(&y_label, &[])
-                .set_y_range(
-                    AutoOption::Auto,
-                    self.y_max.map_or(AutoOption::Auto, AutoOption::Fix),
-                );
-            if self.logscale {
-                axes.set_y_log(Some(10.0));
-            }
+        let axes = fg.axes2d();
+        axes.set_title(&self.title, &[])
+            .points(xs, ys, &[])
+            .set_x_label(&x_label, &[])
+            .set_x_ticks(Some((AutoOption::Auto, 0)), &[], &[Rotate(270.0)])
+            .set_x_range(AutoOption::Fix(0.0), AutoOption::Fix(results.len() as f64))
+            .set_y_label(&y_label, &[])
+            .set_y_range(
+                AutoOption::Auto,
+                self.y_max.map_or(AutoOption::Auto, AutoOption::Fix),
+            );
+        if self.logscale {
+            axes.set_y_log(Some(10.0));
         }
         fg.set_terminal(&self.terminal, &self.output_file);
         fg.show();
