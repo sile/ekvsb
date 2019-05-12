@@ -314,7 +314,7 @@ impl WorkloadCommand {
         match self {
             WorkloadCommand::Put { seed, .. }
             | WorkloadCommand::Get { seed, .. }
-            | WorkloadCommand::Delete { seed, .. } => seed.as_ref().map(|s| s.as_str()),
+            | WorkloadCommand::Delete { seed, .. } => seed.as_ref().map(String::as_str),
         }
     }
 
@@ -322,7 +322,7 @@ impl WorkloadCommand {
         match self {
             WorkloadCommand::Put { shuffle, .. }
             | WorkloadCommand::Get { shuffle, .. }
-            | WorkloadCommand::Delete { shuffle, .. } => shuffle.as_ref().map(|s| s.as_str()),
+            | WorkloadCommand::Delete { shuffle, .. } => shuffle.as_ref().map(String::as_str),
         }
     }
 }
@@ -373,7 +373,7 @@ impl PlotCommand {
     fn title(&self) -> Option<&str> {
         match self {
             PlotCommand::Text { title, .. } | PlotCommand::Png { title, .. } => {
-                title.as_ref().map(|s| s.as_str())
+                title.as_ref().map(String::as_str)
             }
         }
     }
