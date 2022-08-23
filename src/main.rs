@@ -14,7 +14,7 @@ use indicatif::ProgressBar;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
-use rocksdb;
+use rocksdb::{self, Cache};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
@@ -164,12 +164,6 @@ struct RocksDbOpt {
     compaction_style: Option<CompactionStyle>,
 
     #[structopt(long)]
-    max_background_compactions: Option<i32>,
-
-    #[structopt(long)]
-    max_background_flushes: Option<i32>,
-
-    #[structopt(long)]
     disable_auto_compactions: bool,
 
     #[structopt(long)]
@@ -207,7 +201,7 @@ struct RocksDbOpt {
     block_opt_disable_cache: bool,
 
     #[structopt(long)]
-    block_opt_bloom_filter_bits_per_key: Option<i32>,
+    block_opt_bloom_filter_bits_per_key: Option<f64>,
 
     #[structopt(long)]
     block_opt_bloom_filter_block_based: bool,
@@ -771,12 +765,6 @@ fn make_rocksdb_options(opt: &RocksDbOpt) -> Result<rocksdb::Options> {
     if let Some(v) = opt.level_zero_stop_writes_trigger {
         options.set_level_zero_stop_writes_trigger(v);
     }
-    if let Some(v) = opt.max_background_compactions {
-        options.set_max_background_compactions(v);
-    }
-    if let Some(v) = opt.max_background_flushes {
-        options.set_max_background_flushes(v);
-    }
     if let Some(v) = opt.max_bytes_for_level_base {
         options.set_max_bytes_for_level_base(v);
     }
@@ -835,7 +823,7 @@ fn make_rocksdb_options(opt: &RocksDbOpt) -> Result<rocksdb::Options> {
         block_opts.set_block_size(v);
     }
     if let Some(v) = opt.block_opt_lru_cache {
-        block_opts.set_lru_cache(v);
+        block_opts.set_block_cache(&track_any_err!(Cache::new_lru_cache(v))?);
     }
     if opt.block_opt_disable_cache {
         block_opts.disable_cache();

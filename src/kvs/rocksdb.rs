@@ -1,7 +1,7 @@
 use crate::kvs::KeyValueStore;
 use crate::task::Existence;
 use crate::Result;
-use rocksdb::{DBVector, Options, DB};
+use rocksdb::{Options, DB};
 use std::path::Path;
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ impl RocksDb {
     }
 }
 impl KeyValueStore for RocksDb {
-    type OwnedValue = DBVector;
+    type OwnedValue = Vec<u8>;
 
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<Existence> {
         track_any_err!(self.db.put(key, value))?;
