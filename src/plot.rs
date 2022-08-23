@@ -36,7 +36,7 @@ impl PlotOptions {
             .cloned()
             .enumerate()
             .map(|(x, y)| (x as f64, y.as_f64()))
-            .filter(|_| rand::thread_rng().gen_range(0.0, 1.0) < self.sampling_rate)
+            .filter(|_| rand::thread_rng().gen_range(0.0..1.0) < self.sampling_rate)
             .collect::<Vec<_>>();
         let xs = data.iter().map(|t| t.0);
         let ys = data.iter().map(|t| t.1);
