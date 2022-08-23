@@ -70,7 +70,7 @@ impl PlotOptions {
             axes.set_y_log(Some(10.0));
         }
         fg.set_terminal(&self.terminal, &self.output_file);
-        fg.show();
+        track_any_err!(fg.show().map_err(|e| e.to_string()))?;
         Ok(())
     }
 }
