@@ -13,7 +13,7 @@ edition = "2018"
 [dependencies]
 byte-unit = "1"
 cannyls = "0.9"
-clap = "2"
+clap = { version = "4", features = ["derive"] }
 futures = "0.1"
 gnuplot = "0.0"
 indicatif = "0.11"
@@ -25,5 +25,4 @@ serde_derive = "1"
 serde_json = "1"
 siphasher = "0.3"
 sled = "0.34.7"
-structopt = "0.2"
 trackable = { version = "1", features = ["serialize"] }

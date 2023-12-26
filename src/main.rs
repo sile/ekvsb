@@ -1,11 +1,10 @@
 #[macro_use]
-extern crate clap;
-#[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate trackable;
 
 use byte_unit::Byte;
+use clap::Parser;
 use ekvsb::kvs::{self, KeyValueStore};
 use ekvsb::task::{Key, Seconds, Task, TaskResult, ValueSpec};
 use ekvsb::workload::{Workload, WorkloadExecutor};
@@ -18,258 +17,245 @@ use rocksdb::{self, Cache};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
-use structopt::StructOpt;
 use trackable::error::{ErrorKindExt, Failed};
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, Parser)]
 struct Opt {
-    #[structopt(long, default_value = "0GiB", parse(try_from_str = "parse_size"))]
+    #[clap(long, default_value = "0GiB", value_parser = parse_size)]
     memory_load: usize,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: Command,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::Subcommand)]
 #[allow(clippy::large_enum_variant)]
 enum Command {
-    #[structopt(name = "run", about = "Executes a benchmark")]
+    #[clap(about = "Executes a benchmark", subcommand)]
     Run(RunCommand),
 
-    #[structopt(name = "workload", about = "Generates a benchmark workload")]
+    #[clap(about = "Generates a benchmark workload", subcommand)]
     Workload(WorkloadCommand),
 
-    #[structopt(name = "summary", about = "Shows summary of a benchmark result")]
+    #[clap(about = "Shows summary of a benchmark result")]
     Summary,
 
-    #[structopt(name = "plot", about = "Plots a benchmark result")]
+    #[clap(about = "Plots a benchmark result", subcommand)]
     Plot(PlotCommand),
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, clap::Subcommand)]
 #[allow(clippy::large_enum_variant)]
 enum RunCommand {
-    #[structopt(name = "builtin::fs", about = "FileSystem")]
-    Fs {
-        #[structopt(parse(from_os_str))]
-        dir: PathBuf,
-    },
+    #[clap(name = "builtin::fs", about = "FileSystem")]
+    Fs { dir: PathBuf },
 
-    #[structopt(name = "builtin::hashmap", about = "HashMap")]
+    #[clap(name = "builtin::hashmap", about = "HashMap")]
     HashMap,
 
-    #[structopt(name = "builtin::btreemap", about = "BTreeMap")]
+    #[clap(name = "builtin::btreemap", about = "BTreeMap")]
     BTreeMap,
 
-    #[structopt(name = "cannyls", about = "CannyLS")]
+    #[clap(name = "cannyls", about = "CannyLS")]
     CannyLs {
-        #[structopt(parse(from_os_str))]
         file: PathBuf,
 
-        #[structopt(long, default_value = "1GiB", parse(try_from_str = "parse_size_u64"))]
+        #[clap(long, default_value = "1GiB", value_parser = parse_size_u64)]
         capacity: u64,
 
-        #[structopt(long, default_value = "4096")]
+        #[clap(long, default_value = "4096")]
         journal_sync_interval: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         without_device: bool,
     },
 
-    #[structopt(name = "rocksdb", about = "RocksDB")]
+    #[clap(name = "rocksdb", about = "RocksDB")]
     RocksDb(RocksDbOpt),
 
-    #[structopt(name = "sled", about = "Sled")]
-    Sled {
-        #[structopt(long, parse(from_os_str))]
-        dir: PathBuf,
-    },
+    #[clap(name = "sled", about = "Sled")]
+    Sled { dir: PathBuf },
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 struct RocksDbOpt {
-    #[structopt(parse(from_os_str))]
     dir: PathBuf,
 
-    #[structopt(long)]
+    #[clap(long)]
     force_default: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     parallelism: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     optimize_level_style_compaction: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     compaction_readahead_size: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     optimize_for_point_lookup: Option<u64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     use_fsync: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     bytes_per_sync: Option<u64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     disable_concurrent_memtable_write: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     use_direct_reads: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     use_direct_io_for_flush_and_compaction: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     table_cache_num_shard_bits: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     min_write_buffer_number: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     max_write_buffer_number: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     write_buffer_size: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     max_bytes_for_level_base: Option<u64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     max_bytes_for_level_multiplier: Option<f64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     max_manifest_file_size: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     target_file_size_base: Option<u64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     min_write_buffer_number_to_merge: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     level_zero_file_num_compaction_trigger: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     level_zero_slowdown_writes_trigger: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     level_zero_stop_writes_trigger: Option<i32>,
 
-    #[structopt(long, raw(possible_values = "&CompactionStyle::variants()"))]
+    #[clap(long)]
     compaction_style: Option<CompactionStyle>,
 
-    #[structopt(long)]
+    #[clap(long)]
     disable_auto_compactions: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     disable_advise_random_on_open: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     num_levels: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_prefix_bloom_ratio: Option<f64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_factory_vector: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_factory_hashskiplist_bucket_count: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_factory_hashskiplist_height: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_factory_hashskiplist_branching_factor: Option<i32>,
 
-    #[structopt(long)]
+    #[clap(long)]
     memtable_factory_hashlinklist_bucket_count: Option<usize>,
 
     // https://github.com/facebook/rocksdb/blob/2670fe8c73c66db6dad64bdf875e3342494e8ef2/include/rocksdb/table.h
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_block_size: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_lru_cache: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_disable_cache: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_bloom_filter_bits_per_key: Option<f64>,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_bloom_filter_block_based: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_cache_index_and_filter_blocks: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     block_opt_index_type: Option<BlockBasedIndexType>,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, clap::Subcommand)]
 enum WorkloadCommand {
-    #[structopt(about = "PUT workload")]
+    #[clap(about = "PUT workload")]
     Put {
-        #[structopt(long, default_value = "1000")]
+        #[clap(long, default_value = "1000")]
         count: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         population_size: Option<usize>,
 
-        #[structopt(long, default_value = "10")]
+        #[clap(long, default_value = "10")]
         key_size: usize,
 
-        #[structopt(long, default_value = "1KiB", parse(try_from_str = "parse_size"))]
+        #[clap(long, default_value = "1KiB", value_parser = parse_size)]
         value_size: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         seed: Option<String>,
 
-        #[structopt(long)]
+        #[clap(long)]
         shuffle: Option<String>,
     },
 
-    #[structopt(about = "GET workload")]
+    #[clap(about = "GET workload")]
     Get {
-        #[structopt(long, default_value = "1000")]
+        #[clap(long, default_value = "1000")]
         count: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         population_size: Option<usize>,
 
-        #[structopt(long, default_value = "10")]
+        #[clap(long, default_value = "10")]
         key_size: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         seed: Option<String>,
 
-        #[structopt(long)]
+        #[clap(long)]
         shuffle: Option<String>,
     },
 
-    #[structopt(about = "DELETE workload")]
+    #[clap(about = "DELETE workload")]
     Delete {
-        #[structopt(long, default_value = "1000")]
+        #[clap(long, default_value = "1000")]
         count: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         population_size: Option<usize>,
 
-        #[structopt(long, default_value = "10")]
+        #[clap(long, default_value = "10")]
         key_size: usize,
 
-        #[structopt(long)]
+        #[clap(long)]
         seed: Option<String>,
 
-        #[structopt(long)]
+        #[clap(long)]
         shuffle: Option<String>,
     },
 }
@@ -321,45 +307,43 @@ impl WorkloadCommand {
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, clap::Subcommand)]
 enum PlotCommand {
-    #[structopt(name = "text", about = "TEXT")]
+    #[clap(name = "text", about = "TEXT")]
     Text {
-        #[structopt(long)]
+        #[clap(long)]
         title: Option<String>,
 
-        #[structopt(long, default_value = "1.0")]
+        #[clap(long, default_value = "1.0")]
         sampling_rate: f64,
 
-        #[structopt(long)]
+        #[clap(long)]
         y_max: Option<f64>,
 
-        #[structopt(long)]
+        #[clap(long)]
         logscale: bool,
     },
 
-    #[structopt(name = "png", about = "PNG")]
+    #[clap(name = "png", about = "PNG")]
     Png {
-        #[structopt(parse(from_os_str))]
         output_file: PathBuf,
 
-        #[structopt(long)]
+        #[clap(long)]
         title: Option<String>,
 
-        #[structopt(long, default_value = "1.0")]
+        #[clap(long, default_value = "1.0")]
         sampling_rate: f64,
 
-        #[structopt(long)]
+        #[clap(long)]
         y_max: Option<f64>,
 
-        #[structopt(long)]
+        #[clap(long)]
         logscale: bool,
 
-        #[structopt(long, default_value = "1200")]
+        #[clap(long, default_value = "1200")]
         width: usize,
 
-        #[structopt(long, default_value = "800")]
+        #[clap(long, default_value = "800")]
         height: usize,
     },
 }
@@ -393,27 +377,23 @@ impl PlotCommand {
     }
 }
 
-arg_enum! {
-    #[derive(Debug)]
-    enum CompactionStyle {
-        Level,
-        Universal,
-        Fifo
-    }
+#[derive(Debug, Clone, clap::ValueEnum)]
+enum CompactionStyle {
+    Level,
+    Universal,
+    Fifo,
 }
 
-arg_enum! {
-    #[derive(Debug)]
-    #[allow(clippy::enum_variant_names)]
-    enum BlockBasedIndexType {
-        BinarySearch,
-        HashSearch,
-        TwoLevelIndexSearch,
-    }
+#[derive(Debug, Clone, clap::ValueEnum)]
+#[allow(clippy::enum_variant_names)]
+enum BlockBasedIndexType {
+    BinarySearch,
+    HashSearch,
+    TwoLevelIndexSearch,
 }
 
 fn main() -> trackable::result::MainResult {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     match opt.command {
         Command::Run(ref command) => {
